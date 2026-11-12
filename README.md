@@ -7,7 +7,7 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 1. **Explain the hold** — status from PayPal Orders/Payments/Balances APIs + the policy that applies (HK/CN accounts: holds up to 30 days; released ~24h after a supported carrier confirms delivery).
 2. **Verify fulfillment** — amount, quantity, SKU, weight, timeline, route, tracking strength and Seller Protection eligibility, each traced back to a source document.
 3. **Push tracking** — `POST /v2/checkout/orders/{id}/track` with the correct PayPal carrier code (e.g. `YUNEXPRESS`). Blocked if any check fails (e.g. an untracked economy parcel that can never show "delivered").
-4. **Answer disputes with the same evidence** — builds a hashed, source-cited evidence PDF and submits it via the Disputes API (`provide-evidence`).
+4. **Answer disputes with the same evidence** — reads the actions PayPal currently allows (HATEOAS links), builds a hashed, source-cited evidence PDF and submits it via the Disputes API (`provide-evidence`, or `provide-supporting-info` while PayPal is reviewing a claim).
 
 ## Why this problem
 
@@ -22,7 +22,7 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 |---|---|
 | PayPal **Orders v2** | create/capture the sandbox order; read payment source & shipping address; **add tracking** (`/track`) |
 | PayPal **Payments / Balances / Transaction Search** | read capture status, `status_details`, withheld balance for hold diagnosis |
-| PayPal **Disputes v1** | list/get disputes, read allowed actions (HATEOAS), **provide-evidence** (multipart PDF), sandbox `require-evidence` / `adjudicate` |
+| PayPal **Disputes v1** | list/get disputes, read allowed actions (HATEOAS), **provide-evidence** / **provide-supporting-info** (multipart PDF), escalate, sandbox `require-evidence` / `adjudicate` |
 | PayPal **sandbox** | everything runs against `api-m.sandbox.paypal.com` |
 | **Qwen (Alibaba Cloud Model Studio / Bailian)**, `qwen3.8-flash` via the OpenAI-compatible endpoint | (1) extracts structured fields from Chinese supplier documents; (2) explains each check and the hold in English + Chinese; (3) drafts English evidence statements with source citations |
 
@@ -50,7 +50,9 @@ npm start                 # http://localhost:3000
 1. Open the approval URL, log in with a **sandbox Personal (buyer) account** and pay. You are redirected to `localhost:3000/return`, which captures the payment.
 2. Click **Run verification** (tick "untracked economy parcel" to see a blocked case).
 3. Click **Approve & add tracking** (click twice to confirm).
-4. As the sandbox buyer, open an *Item not received* dispute on the payment in the sandbox Resolution Center (sandbox.paypal.com). Wait a few minutes, then in Unhold: **Open** the dispute → *[sandbox] Move to waiting for seller evidence* (if needed) → **Approve & submit evidence** → *[sandbox] Adjudicate*.
+4. As the sandbox buyer, open an *Item not received* dispute on the payment in the sandbox Resolution Center (sandbox.paypal.com). Wait a few minutes, then in Unhold: **Open** the dispute → **Approve & submit evidence** (Unhold picks `provide-evidence` or `provide-supporting-info` depending on what PayPal allows). Optional sandbox helpers: *Move to waiting for seller evidence*, *Adjudicate* (only accepted in certain dispute states).
+
+Verified end-to-end in sandbox on 2026-11-12: order captured → tracking `YUNEXPRESS` added (visible on the buyer's case page) → buyer opened an Item-not-received claim → evidence PDF submitted and on file while PayPal reviews.
 
 Seller documents in `data/docs/` are **mock data** (clearly labelled); all PayPal data is real sandbox data.
 

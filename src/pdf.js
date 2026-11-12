@@ -1,5 +1,5 @@
 // Minimal dependency-free PDF writer (Helvetica, ASCII text, auto page breaks).
-const esc = (s) => s.replace(/[^\x20-\x7E]/g, '?').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+const esc = (s) => s.replace(/[^\x20-\x7E]+/g, '').replace(/\(\s*\)/g, '').replace(/(\s*·\s*)+/g, ' · ').replace(/\s{2,}/g, ' ').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 
 function wrap(text, max = 92) {
   const out = [];

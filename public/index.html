@@ -123,6 +123,7 @@ async function openDispute(id) {
       <div class="mute">Seller response due: ${h(d.seller_response_due_date || '—')} · Allowed actions from PayPal: ${h(actions.join(', ') || '—')}</div>
       ${d.dispute_outcome ? `<div class="ok">Outcome: ${h(d.dispute_outcome.outcome_code)}</div>` : ''}</div>
     <div class="row" style="margin-top:10px">
+      <button class="ghost" onclick="act('escalate','${h(id)}')">Escalate to PayPal review</button>
       <button class="ghost" onclick="act('require-evidence','${h(id)}')">[sandbox] Move to “waiting for seller evidence”</button>
       <button id="btnEv" onclick="submitEvidence('${h(id)}')">Approve & submit evidence</button>
       <a href="/evidence.pdf" target="_blank">View evidence PDF</a>

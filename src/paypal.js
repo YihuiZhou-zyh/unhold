@@ -134,6 +134,25 @@ export function provideEvidence(disputeId, { evidences, files }) {
   });
 }
 
+// Provide supporting info while PayPal reviews a claim (status UNDER_REVIEW).
+export function provideSupportingInfo(disputeId, { notes, files }) {
+  const boundary = `----unhold${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+  const parts = [
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="input"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ notes })}\r\n`),
+  ];
+  for (const f of files) {
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="supporting-info-file"; filename="${f.name}"\r\nContent-Type: ${f.type}\r\n\r\n`));
+    parts.push(Buffer.from(f.buffer), Buffer.from('\r\n'));
+  }
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+  return api('POST', `/v1/customer/disputes/${did(disputeId)}/provide-supporting-info`, Buffer.concat(parts), {
+    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+  });
+}
+
+export const escalate = (disputeId, note) =>
+  api('POST', `/v1/customer/disputes/${did(disputeId)}/escalate`, { note });
+
 export const sendMessage = (disputeId, message) =>
   api('POST', `/v1/customer/disputes/${did(disputeId)}/send-message`, { message });
 

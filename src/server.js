@@ -90,6 +90,9 @@ const routes = {
     let paypalOrder = null, disputes = [];
     if (s.orderId) paypalOrder = await pp.getOrder(s.orderId).catch((e) => ({ error: e.message }));
     try { disputes = (await pp.listDisputes()).items || []; } catch (e) { disputes = [{ error: e.message }]; }
+    if (s.disputeId && !disputes.some((d) => d.dispute_id === s.disputeId)) {
+      try { disputes.unshift(await pp.getDispute(s.disputeId)); } catch {}
+    }
     return { orderId: s.orderId, paypalOrder, disputes, lastAnalysis: s.lastAnalysis, tracked: s.tracked, order };
   },
   'POST /api/analyze': async (body) => analyze(body.waybill === 'weak' ? 'weak_waybill_example.json' : 'forwarder_waybill.json'),
@@ -113,8 +116,10 @@ const routes = {
   },
   'POST /api/dispute': async (body) => {
     const d = await pp.getDispute(body.id);
+    save({ ...state(), disputeId: body.id });
     return { dispute: d, actions: pp.linkRels(d) };
   },
+  'POST /api/dispute/escalate': async (body) => pp.escalate(body.id, 'Seller requests PayPal review: tracked shipment with verified fulfillment evidence is available.'),
   'POST /api/dispute/require-evidence': async (body) => pp.sandboxRequireEvidence(body.id),
   'POST /api/dispute/evidence': async (body) => {
     const s = state();
@@ -130,7 +135,13 @@ const routes = {
         notes: a.ai.evidence_statements.filter((x) => x.grounded).map((x) => x.text_en).join(' ').slice(0, 1900),
       },
     ];
-    const r = await pp.provideEvidence(body.id, { evidences, files: [{ name: 'evidence.pdf', type: 'application/pdf', buffer: pdf }] });
+    const d = await pp.getDispute(body.id);
+    const rels = pp.linkRels(d);
+    const file = [{ name: 'evidence.pdf', type: 'application/pdf', buffer: pdf }];
+    // Use whichever response PayPal currently allows (HATEOAS links): evidence, or supporting info during review.
+    const r = rels.includes('provide_evidence')
+      ? await pp.provideEvidence(body.id, { evidences, files: file })
+      : await pp.provideSupportingInfo(body.id, { notes: evidences[0].notes, files: file });
     audit('provide_evidence', { disputeId: body.id, statements: evidences[0].notes.length, pdf_bytes: pdf.length });
     return r;
   },
