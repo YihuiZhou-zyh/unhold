@@ -80,9 +80,10 @@ export function createOrder({ amount, sku, name, quantity, shipping, returnUrl, 
   }, { Prefer: 'return=representation' });
 }
 
-export const getOrder = (id) => api('GET', `/v2/checkout/orders/${id}`);
+const oid = (id) => { if (!/^[A-Z0-9]{8,32}$/.test(String(id))) throw new Error('invalid order id'); return id; };
+export const getOrder = (id) => api('GET', `/v2/checkout/orders/${oid(id)}`);
 export const captureOrder = (id) =>
-  api('POST', `/v2/checkout/orders/${id}/capture`, {}, { Prefer: 'return=representation' });
+  api('POST', `/v2/checkout/orders/${oid(id)}/capture`, {}, { Prefer: 'return=representation' });
 
 // Add tracking to an order (Orders v2 — the recommended tracking path).
 export function addTracking(orderId, { captureId, trackingNumber, carrier, carrierNameOther }) {
@@ -93,7 +94,7 @@ export function addTracking(orderId, { captureId, trackingNumber, carrier, carri
     notify_payer: false,
     ...(carrier === 'OTHER' ? { carrier_name_other: carrierNameOther } : {}),
   };
-  return api('POST', `/v2/checkout/orders/${orderId}/track`, body, { Prefer: 'return=representation' });
+  return api('POST', `/v2/checkout/orders/${oid(orderId)}/track`, body, { Prefer: 'return=representation' });
 }
 
 // ---------- Payments / balances / transactions (read-only diagnosis) ----------
@@ -112,8 +113,9 @@ export function searchTransactions(days = 30) {
 }
 
 // ---------- Disputes v1 ----------
+const did = (id) => { if (!/^PP-[A-Z0-9-]{3,64}$/.test(String(id))) throw new Error('invalid dispute id'); return encodeURIComponent(id); };
 export const listDisputes = () => api('GET', '/v1/customer/disputes?page_size=20');
-export const getDispute = (id) => api('GET', `/v1/customer/disputes/${id}`);
+export const getDispute = (id) => api('GET', `/v1/customer/disputes/${did(id)}`);
 
 export function provideEvidence(disputeId, { evidences, files }) {
   const fd = new FormData();
@@ -121,16 +123,16 @@ export function provideEvidence(disputeId, { evidences, files }) {
   for (const f of files) {
     fd.append('evidence-file', new Blob([f.buffer], { type: f.type }), f.name);
   }
-  return api('POST', `/v1/customer/disputes/${disputeId}/provide-evidence`, fd);
+  return api('POST', `/v1/customer/disputes/${did(disputeId)}/provide-evidence`, fd);
 }
 
 export const sendMessage = (disputeId, message) =>
-  api('POST', `/v1/customer/disputes/${disputeId}/send-message`, { message });
+  api('POST', `/v1/customer/disputes/${did(disputeId)}/send-message`, { message });
 
 // Sandbox-only helpers to move a dispute through its lifecycle for testing.
 export const sandboxRequireEvidence = (disputeId, action = 'SELLER_EVIDENCE') =>
-  api('POST', `/v1/customer/disputes/${disputeId}/require-evidence`, { action });
+  api('POST', `/v1/customer/disputes/${did(disputeId)}/require-evidence`, { action });
 export const sandboxAdjudicate = (disputeId, outcome = 'SELLER_FAVOR') =>
-  api('POST', `/v1/customer/disputes/${disputeId}/adjudicate`, { adjudication_outcome: outcome });
+  !['SELLER_FAVOR', 'BUYER_FAVOR'].includes(outcome) ? Promise.reject(new Error('invalid outcome')) : api('POST', `/v1/customer/disputes/${did(disputeId)}/adjudicate`, { adjudication_outcome: outcome });
 
 export const linkRels = (obj) => (obj?.links || []).map((l) => l.rel);

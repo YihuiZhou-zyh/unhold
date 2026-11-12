@@ -142,6 +142,7 @@ http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/return') {
       const s = state();
+      if (url.searchParams.get('token') !== s.orderId) { res.writeHead(302, { Location: '/' }); return res.end(); }
       try { await pp.captureOrder(s.orderId); audit('capture', { orderId: s.orderId }); } catch {}
       res.writeHead(302, { Location: '/' }); return res.end();
     }
@@ -149,6 +150,12 @@ http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/pdf' }); return res.end(readFileSync(root('out/evidence.pdf')));
     }
     const key = `${req.method} ${url.pathname}`;
+    if (req.method === 'POST') {
+      const origin = req.headers.origin;
+      if ((origin && origin !== `http://localhost:${PORT}` && origin !== `http://127.0.0.1:${PORT}`) || !String(req.headers['content-type']).includes('application/json')) {
+        res.writeHead(403); return res.end('forbidden');
+      }
+    }
     if (routes[key]) {
       let body = '';
       for await (const c of req) body += c;
@@ -161,4 +168,4 @@ http.createServer(async (req, res) => {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: e.message, details: e.body }));
   }
-}).listen(PORT, () => console.log(`Unhold running on http://localhost:${PORT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`Unhold running on http://localhost:${PORT}`));

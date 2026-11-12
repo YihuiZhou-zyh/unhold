@@ -22,7 +22,7 @@
   .chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; color:#fff; }
   .pass{background:var(--pass)} .fail{background:var(--fail)} .warn{background:var(--warn)} .explained{background:var(--info)}
   .box { background:#f2f5fb; border-left:4px solid var(--accent); padding:10px 12px; border-radius:6px; }
-  .zh { color:var(--mute); font-size:13px; margin-top:4px; }
+  .zh { color:var(--mute); font-size:13px; margin-top:4px; display:none; } body.bilingual .zh { display:block; }
   pre { white-space:pre-wrap; background:#0f1420; color:#d7e0f0; padding:10px; border-radius:8px; font-size:12px; max-height:220px; overflow:auto; }
   .ok { color:var(--pass); font-weight:600; } .bad { color:var(--fail); font-weight:600; }
   #toast { position:fixed; right:16px; bottom:16px; background:#14171f; color:#fff; padding:10px 14px; border-radius:8px; display:none; max-width:420px; }
@@ -32,7 +32,7 @@
 <body>
 <header>
   <h1>Unhold</h1>
-  <p>Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have. · PayPal sandbox</p>
+  <p style="float:right;margin:0"><label><input type="checkbox" onchange="document.body.classList.toggle('bilingual', this.checked)"> 中文 explanations</label></p><p>Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have. · PayPal sandbox</p>
 </header>
 <main>
   <section class="card">
@@ -66,6 +66,7 @@
 <div id="toast"></div>
 <script>
 const $ = (id) => document.getElementById(id);
+const h = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = (m, ms = 4000) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms); };
 async function call(path, body) {
   const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -76,33 +77,33 @@ async function refresh() {
   S = await call('/api/state');
   const o = S.paypalOrder, cap = o?.purchase_units?.[0]?.payments?.captures?.[0];
   $('pay').innerHTML = !o ? 'No order yet — run <code>npm run create-order</code>.' : `
-    <table><tr><th>PayPal order</th><td>${o.id} · <b>${o.status}</b></td></tr>
+    <table><tr><th>PayPal order</th><td>${h(o.id)} · <b>${h(o.status)}</b></td></tr>
     <tr><th>Item</th><td>${S.order.item_name} × ${S.order.quantity} · ${S.order.amount} USD · shop order ${S.order.shop_order_id}</td></tr>
-    <tr><th>Capture</th><td>${cap ? `${cap.id} · <b>${cap.status}</b>${cap.status_details ? ' · reason ' + cap.status_details.reason : ''}` : '—'}</td></tr>
+    <tr><th>Capture</th><td>${cap ? `${h(cap.id)} · <b>${h(cap.status)}</b>${cap.status_details ? ' · reason ' + h(cap.status_details.reason) : ''}` : '—'}</td></tr>
     <tr><th>Paid with</th><td>${Object.keys(o.payment_source || {}).join(', ') || '—'}</td></tr></table>
     ${o.status === 'APPROVED' ? '<button id="btnCap">Capture payment</button>' : ''}`;
   if ($('btnCap')) $('btnCap').onclick = async () => { await call('/api/capture', {}); toast('Captured'); refresh(); };
   if (S.lastAnalysis) renderAnalysis(S.lastAnalysis);
-  if (S.tracked) $('trackOut').innerHTML = `<span class="ok">✓ tracking ${S.tracked.tracking} added at ${S.tracked.at}</span>`;
+  if (S.tracked) $('trackOut').innerHTML = `<span class="ok">✓ tracking ${h(S.tracked.tracking)} added at ${h(S.tracked.at)}</span>`;
   const ds = (S.disputes || []).filter((d) => !d.error);
   $('disputes').innerHTML = ds.length ? '<table><tr><th>Dispute</th><th>Reason</th><th>Status</th><th>Amount</th><th></th></tr>' + ds.map((d) =>
-    `<tr><td>${d.dispute_id}</td><td>${d.reason}</td><td>${d.status}</td><td>${d.dispute_amount?.value || ''}</td><td><button class="ghost" onclick="openDispute('${d.dispute_id}')">Open</button></td></tr>`).join('') + '</table>'
+    `<tr><td>${h(d.dispute_id)}</td><td>${h(d.reason)}</td><td>${h(d.status)}</td><td>${h(d.dispute_amount?.value)}</td><td><button class="ghost" data-id="${h(d.dispute_id)}" onclick="openDispute(this.dataset.id)">Open</button></td></tr>`).join('') + '</table>'
     : (S.disputes?.[0]?.error ? 'Disputes API: ' + S.disputes[0].error : 'No disputes yet. (Buyer opens one in the sandbox Resolution Center.)');
 }
 function renderAnalysis(a) {
   const notes = Object.fromEntries((a.ai.check_notes || []).map((n) => [n.check_id, n]));
   const failed = a.checks.filter((c) => c.status === 'fail').length;
   $('verify').innerHTML = `
-    <div class="box"><b>Why is this money held?</b><div>${a.ai.hold_explainer_en}</div><div class="zh">${a.ai.hold_explainer_zh}</div></div>
+    <div class="box"><b>Why is this money held?</b><div>${h(a.ai.hold_explainer_en)}</div><div class="zh">${h(a.ai.hold_explainer_zh)}</div></div>
     <table style="margin-top:10px"><tr><th>Check</th><th>Result</th><th>Detail (from documents)</th><th>AI explanation</th></tr>
-    ${a.checks.map((c) => `<tr><td>${c.title}<div class="src">${c.sources.join(' · ')}</div></td><td><span class="chip ${c.status}">${c.status}</span></td><td>${c.detail}</td>
-      <td>${notes[c.id]?.note_en || ''}<div class="zh">${notes[c.id]?.note_zh || ''}</div><div class="mute">confidence: ${notes[c.id]?.confidence || '-'}</div></td></tr>`).join('')}</table>
-    <div class="box" style="margin-top:10px"><b>Next step:</b> ${a.ai.recommendation_en}<div class="zh">${a.ai.recommendation_zh}</div></div>
+    ${a.checks.map((c) => `<tr><td>${h(c.title)}<div class="src">${h(c.sources.join(' · '))}</div></td><td><span class="chip ${h(c.status)}">${h(c.status)}</span></td><td>${h(c.detail)}</td>
+      <td>${h(notes[c.id]?.note_en)}<div class="zh">${h(notes[c.id]?.note_zh)}</div><div class="mute">confidence: ${h(notes[c.id]?.confidence || '-')}</div></td></tr>`).join('')}</table>
+    <div class="box" style="margin-top:10px"><b>Next step:</b> ${h(a.ai.recommendation_en)}<div class="zh">${h(a.ai.recommendation_zh)}</div></div>
     <h3 style="font-size:15px;margin:14px 0 6px">Evidence statements (grounding guard)</h3>
-    <table>${a.ai.evidence_statements.map((s) => `<tr><td>${s.grounded ? '<span class="ok">✓ grounded</span>' : '<span class="bad">✗ blocked</span>'}</td><td>${s.text_en}<div class="src">${s.sources.join(' · ')}</div>${s.problems.length ? '<div class="bad">' + s.problems.join('; ') + '</div>' : ''}</td></tr>`).join('')}</table>
-    <p class="mute">Purchase order extracted by Qwen from Chinese: ${a.purchase.item_en} · qty ${a.purchase.quantity} · ¥${a.purchase.total_cny} · ${a.purchase.date}</p>`;
+    <table>${a.ai.evidence_statements.map((s) => `<tr><td>${s.grounded ? '<span class="ok">✓ grounded</span>' : '<span class="bad">✗ blocked</span>'}</td><td>${h(s.text_en)}<div class="src">${h(s.sources.join(' · '))}</div>${s.problems.length ? '<div class="bad">' + s.problems.join('; ') + '</div>' : ''}</td></tr>`).join('')}</table>
+    <p class="mute">Purchase order extracted by Qwen from Chinese: ${h(a.purchase.item_en)} · qty ${h(a.purchase.quantity)} · ¥${h(a.purchase.total_cny)} · ${h(a.purchase.date)}</p>`;
   $('btnTrack').disabled = failed > 0 || !a.holdStatus.capture_id || !!S.tracked;
-  if (failed) $('trackOut').innerHTML = `<span class="bad">Blocked: ${failed} check(s) failed — fix before pushing tracking.</span>`;
+  if (failed) $('trackOut').innerHTML = `<span class="bad">Blocked: ${h(failed)} check(s) failed — fix before pushing tracking.</span>`;
   else if (!S.tracked) $('trackOut').textContent = '';
 }
 $('btnVerify').onclick = async () => {
@@ -118,14 +119,14 @@ function confirmInline(id) { const b = $(id); if (b.dataset.armed) { delete b.da
 async function openDispute(id) {
   const { dispute: d, actions } = await call('/api/dispute', { id });
   $('disputeDetail').innerHTML = `
-    <div class="box" style="margin-top:10px"><b>${d.dispute_id}</b> · ${d.reason} · <b>${d.status}</b> · stage ${d.dispute_life_cycle_stage}
-      <div class="mute">Seller response due: ${d.seller_response_due_date || '—'} · Allowed actions from PayPal: ${actions.join(', ') || '—'}</div>
-      ${d.dispute_outcome ? `<div class="ok">Outcome: ${d.dispute_outcome.outcome_code}</div>` : ''}</div>
+    <div class="box" style="margin-top:10px"><b>${h(d.dispute_id)}</b> · ${h(d.reason)} · <b>${h(d.status)}</b> · stage ${h(d.dispute_life_cycle_stage)}
+      <div class="mute">Seller response due: ${h(d.seller_response_due_date || '—')} · Allowed actions from PayPal: ${h(actions.join(', ') || '—')}</div>
+      ${d.dispute_outcome ? `<div class="ok">Outcome: ${h(d.dispute_outcome.outcome_code)}</div>` : ''}</div>
     <div class="row" style="margin-top:10px">
-      <button class="ghost" onclick="act('require-evidence','${id}')">[sandbox] Move to “waiting for seller evidence”</button>
-      <button id="btnEv" onclick="submitEvidence('${id}')">Approve & submit evidence</button>
+      <button class="ghost" onclick="act('require-evidence','${h(id)}')">[sandbox] Move to “waiting for seller evidence”</button>
+      <button id="btnEv" onclick="submitEvidence('${h(id)}')">Approve & submit evidence</button>
       <a href="/evidence.pdf" target="_blank">View evidence PDF</a>
-      <button class="ghost" onclick="act('adjudicate','${id}')">[sandbox] Adjudicate</button>
+      <button class="ghost" onclick="act('adjudicate','${h(id)}')">[sandbox] Adjudicate</button>
     </div>`;
 }
 async function act(kind, id) { try { await call('/api/dispute/' + kind, { id }); toast(kind + ' done'); setTimeout(() => openDispute(id), 1200); refresh(); } catch (e) { toast(e.message, 9000); } }
