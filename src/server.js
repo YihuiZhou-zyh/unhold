@@ -4,6 +4,7 @@ import * as pp from './paypal.js';
 import { runChecks, loadDoc } from './verify.js';
 import { extractPurchase, explain, groundingGuard } from './ai.js';
 import { buildPdf } from './pdf.js';
+import { answer as askAnswer } from './ask.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const root = (p) => new URL(`../${p}`, import.meta.url);
@@ -84,6 +85,33 @@ function evidencePdf(a, disputeId) {
   ]);
 }
 
+// Redacted, live case context for "Ask about this case" (no buyer name/street; read-only PayPal calls).
+async function caseContext() {
+  const s = state();
+  const a = s.lastAnalysis;
+  const ppOrder = s.orderId ? await pp.getOrder(s.orderId).catch(() => null) : null;
+  const pu = ppOrder?.purchase_units?.[0];
+  const cap = pu?.payments?.captures?.[0];
+  const dispute = s.disputeId ? await pp.getDispute(s.disputeId).catch(() => null) : null;
+  const trackers = (pu?.shipping?.trackers || []).map((t) => ({ status: t.status, carrier: a?.waybill?.carrier_code_paypal }));
+  return {
+    shop_order: { id: order.shop_order_id, item: order.item_name, quantity: order.quantity, amount: `${order.amount} ${order.currency}`, ship_to: redactedOrder().ship_to },
+    seller: { ships_from: 'China (via forwarder)', paypal_account_region: 'not confirmed via API' },
+    paypal_order: ppOrder ? { status: ppOrder.status, payment_source: Object.keys(ppOrder.payment_source || {}), amount: pu?.amount && `${pu.amount.value} ${pu.amount.currency_code}` } : (a?.paypalOrder || null),
+    capture: cap ? { status: cap.status, status_details_reason: cap.status_details?.reason || null, amount: cap.amount && `${cap.amount.value} ${cap.amount.currency_code}`, captured_at: cap.create_time }
+      : (a?.holdStatus ? { status: a.holdStatus.status, status_details_reason: a.holdStatus.status_details?.reason || null } : null),
+    tracking: {
+      pushed_to_paypal: Boolean(s.tracked) || trackers.length > 0, pushed_at: s.tracked?.at || null,
+      carrier: a?.waybill?.carrier_code_paypal || null, service: a?.waybill?.service || null, handover_date: a?.waybill?.handover_date || null, paypal_trackers: trackers,
+    },
+    dispute: dispute ? {
+      reason: dispute.reason, status: dispute.status, stage: dispute.dispute_life_cycle_stage, created: dispute.create_time,
+      seller_response_due_date: dispute.seller_response_due_date || null, amount: dispute.dispute_amount && `${dispute.dispute_amount.value} ${dispute.dispute_amount.currency_code}`,
+    } : (s.disputeId ? { id_known: true, details: 'unavailable' } : null),
+    latest_checks: a ? { at: a.at, results: a.checks.map((c) => `${c.id}: ${c.status}`) } : null,
+  };
+}
+
 const routes = {
   'GET /api/state': async () => {
     const s = state();
@@ -145,6 +173,11 @@ const routes = {
     audit('provide_evidence', { disputeId: body.id, statements: evidences[0].notes.length, pdf_bytes: pdf.length });
     return r;
   },
+  'POST /api/ask': async (body) => {
+    const q = body.question;
+    if (typeof q !== 'string' || !q.trim() || q.length > 500) throw new Error('question must be a non-empty string of at most 500 characters');
+    return askAnswer(q.trim(), await caseContext());
+  },
   'POST /api/dispute/adjudicate': async (body) => pp.sandboxAdjudicate(body.id, body.outcome || 'SELLER_FAVOR'),
 };
 
@@ -160,6 +193,10 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname === '/evidence.pdf' && existsSync(root('out/evidence.pdf'))) {
       res.writeHead(200, { 'Content-Type': 'application/pdf' }); return res.end(readFileSync(root('out/evidence.pdf')));
+    }
+    if (req.method === 'GET' && (url.pathname === '/ask.js' || url.pathname === '/ask.css')) {
+      res.writeHead(200, { 'Content-Type': url.pathname.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/css; charset=utf-8' });
+      return res.end(readFileSync(root(`public${url.pathname}`)));
     }
     const key = `${req.method} ${url.pathname}`;
     if (req.method === 'POST') {

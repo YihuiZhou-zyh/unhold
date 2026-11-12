@@ -10,6 +10,7 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 2. **Verify fulfillment** — amount, quantity, SKU, weight, timeline, route, tracking strength and Seller Protection eligibility, each traced back to a source document.
 3. **Push tracking** — `POST /v2/checkout/orders/{id}/track` with the correct PayPal carrier code (e.g. `YUNEXPRESS`). Blocked if any check fails (e.g. an untracked economy parcel that can never show "delivered").
 4. **Answer disputes with the same evidence** — reads the actions PayPal currently allows (HATEOAS links), builds a hashed, source-cited evidence PDF and submits it via the Disputes API (`provide-evidence`, or `provide-supporting-info` while PayPal is reviewing a claim).
+5. **Ask about this case** — a Q&A panel that answers seller questions ("why is my money held?", "am I covered by Seller Protection?", "what's my dispute fee?") using only this case's live PayPal data and 20 verbatim PayPal policy excerpts (`data/policy_corpus.json`), with citation chips linking to the source. Uncited claims are dropped; out-of-scope questions are declined.
 
 ## Why this problem
 

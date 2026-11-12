@@ -15,7 +15,7 @@ function apiKey() {
   throw new Error('DASHSCOPE_API_KEY missing (see .env.example)');
 }
 
-async function jsonCall(system, user, schema) {
+export async function jsonCall(system, user, schema) {
   const res = await fetch(`${BASE}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey()}`, 'Content-Type': 'application/json' },
