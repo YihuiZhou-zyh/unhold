@@ -139,6 +139,7 @@ const routes = {
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (![`localhost:${PORT}`, `127.0.0.1:${PORT}`].includes(req.headers.host)) { res.writeHead(421); return res.end('bad host'); }
   try {
     if (url.pathname === '/return') {
       const s = state();

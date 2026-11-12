@@ -8,7 +8,7 @@
   :root { --bg:#f6f7f9; --card:#fff; --ink:#14171f; --mute:#5b6372; --line:#e3e6ec; --pass:#127a45; --fail:#c0352b; --warn:#a86a00; --info:#1f5fbf; --accent:#0b3a7e; }
   * { box-sizing: border-box; }
   body { margin:0; font:15px/1.5 -apple-system, "PingFang SC", "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
-  header { background:var(--accent); color:#fff; padding:18px 24px; }
+  header { background:var(--accent); color:#fff; padding:18px 24px; position:relative; }
   header h1 { margin:0; font-size:22px; } header p { margin:4px 0 0; opacity:.85; }
   main { max-width:1040px; margin:0 auto; padding:16px; display:grid; gap:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
@@ -32,7 +32,7 @@
 <body>
 <header>
   <h1>Unhold</h1>
-  <p style="float:right;margin:0"><label><input type="checkbox" onchange="document.body.classList.toggle('bilingual', this.checked)"> 中文 explanations</label></p><p>Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have. · PayPal sandbox</p>
+  <p style="position:absolute;top:14px;right:20px;margin:0;font-size:13px"><label><input type="checkbox" onchange="document.body.classList.toggle('bilingual', this.checked)"> 中文 explanations</label></p><p>Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have. · PayPal sandbox</p>
 </header>
 <main>
   <section class="card">
@@ -100,7 +100,7 @@ function renderAnalysis(a) {
       <td>${h(notes[c.id]?.note_en)}<div class="zh">${h(notes[c.id]?.note_zh)}</div><div class="mute">confidence: ${h(notes[c.id]?.confidence || '-')}</div></td></tr>`).join('')}</table>
     <div class="box" style="margin-top:10px"><b>Next step:</b> ${h(a.ai.recommendation_en)}<div class="zh">${h(a.ai.recommendation_zh)}</div></div>
     <h3 style="font-size:15px;margin:14px 0 6px">Evidence statements (grounding guard)</h3>
-    <table>${a.ai.evidence_statements.map((s) => `<tr><td>${s.grounded ? '<span class="ok">✓ grounded</span>' : '<span class="bad">✗ blocked</span>'}</td><td>${h(s.text_en)}<div class="src">${h(s.sources.join(' · '))}</div>${s.problems.length ? '<div class="bad">' + s.problems.join('; ') + '</div>' : ''}</td></tr>`).join('')}</table>
+    <table>${a.ai.evidence_statements.map((s) => `<tr><td>${s.grounded ? '<span class="ok">✓ grounded</span>' : '<span class="bad">✗ blocked</span>'}</td><td>${h(s.text_en)}<div class="src">${h(s.sources.join(' · '))}</div>${s.problems.length ? '<div class="bad">' + s.problems.map(h).join('; ') + '</div>' : ''}</td></tr>`).join('')}</table>
     <p class="mute">Purchase order extracted by Qwen from Chinese: ${h(a.purchase.item_en)} · qty ${h(a.purchase.quantity)} · ¥${h(a.purchase.total_cny)} · ${h(a.purchase.date)}</p>`;
   $('btnTrack').disabled = failed > 0 || !a.holdStatus.capture_id || !!S.tracked;
   if (failed) $('trackOut').innerHTML = `<span class="bad">Blocked: ${h(failed)} check(s) failed — fix before pushing tracking.</span>`;
