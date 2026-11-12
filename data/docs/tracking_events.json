@@ -1,0 +1,11 @@
+{
+  "_note": "mock data - last-mile tracking feed (a real build would call a tracking API)",
+  "tracking_number": "YT2631500012345678",
+  "carrier": "YUNEXPRESS",
+  "events": [
+    { "time": "2026-11-12T10:20:00+08:00", "location": "Shenzhen, CN", "status": "PICKED_UP", "desc": "Shipment picked up by forwarder" },
+    { "time": "2026-11-13T22:05:00+08:00", "location": "Shenzhen, CN", "status": "EXPORT_CLEARED", "desc": "Export customs cleared" },
+    { "time": "2026-11-16T07:40:00-08:00", "location": "Los Angeles, CA, US", "status": "ARRIVED_DESTINATION_COUNTRY", "desc": "Arrived at destination country" },
+    { "time": "2026-11-19T14:12:00-08:00", "location": "San Jose, CA 95131, US", "status": "DELIVERED", "desc": "Delivered, left at front door" }
+  ]
+}

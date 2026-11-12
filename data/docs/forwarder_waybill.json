@@ -1,0 +1,18 @@
+{
+  "_note": "mock data - forwarder handover / waybill export",
+  "doc_type": "forwarder_waybill",
+  "forwarder": "YunExpress (云途物流)",
+  "service": "云途全球专线挂号（带妥投）",
+  "carrier_code_paypal": "YUNEXPRESS",
+  "tracking_number": "YT2631500012345678",
+  "handover_date": "2026-11-12",
+  "reference": "SHOP-10482",
+  "declared_item_en": "Ceramic pour-over coffee set",
+  "pieces": 2,
+  "gross_weight_kg": 1.45,
+  "declared_value_usd": 68.00,
+  "consignee_city": "San Jose",
+  "consignee_state": "CA",
+  "consignee_postal_code": "95131",
+  "consignee_country": "US"
+}

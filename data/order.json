@@ -1,0 +1,21 @@
+{
+  "shop_order_id": "SHOP-10482",
+  "platform": "Shopify (mock export)",
+  "created_at": "2026-11-12T08:05:00Z",
+  "item_name": "Ceramic Pour-Over Coffee Set",
+  "sku": "CPO-SET-02",
+  "quantity": 2,
+  "amount": "68.00",
+  "currency": "USD",
+  "weight_kg_per_unit": 0.6,
+  "ship_to": {
+    "full_name": "Alex Buyer",
+    "address": {
+      "address_line_1": "1 Main St",
+      "admin_area_2": "San Jose",
+      "admin_area_1": "CA",
+      "postal_code": "95131",
+      "country_code": "US"
+    }
+  }
+}

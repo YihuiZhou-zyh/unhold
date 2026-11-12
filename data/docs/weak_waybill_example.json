@@ -1,0 +1,18 @@
+{
+  "_note": "mock data - contrast case: an untracked economy parcel",
+  "doc_type": "forwarder_waybill",
+  "forwarder": "China Post (中国邮政)",
+  "service": "中国邮政平常小包+（经济型，境外段无妥投）",
+  "carrier_code_paypal": "CHINA_POST",
+  "tracking_number": "UA123456789CN",
+  "handover_date": "2026-11-12",
+  "reference": "SHOP-10482",
+  "declared_item_en": "Ceramic set",
+  "pieces": 2,
+  "gross_weight_kg": 1.45,
+  "declared_value_usd": 68.00,
+  "consignee_city": "San Jose",
+  "consignee_state": "CA",
+  "consignee_postal_code": "95131",
+  "consignee_country": "US"
+}

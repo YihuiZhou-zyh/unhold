@@ -1,0 +1,14 @@
+{
+  "name": "unhold",
+  "version": "0.1.0",
+  "description": "Get-paid copilot for small cross-border PayPal sellers: explains held funds, verifies fulfillment docs, pushes tracking and answers disputes with traceable evidence (PayPal sandbox + Claude).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "create-order": "node --env-file-if-exists=.env --env-file-if-exists=../.env scripts/create-order.js",
+    "start": "node --env-file-if-exists=.env --env-file-if-exists=../.env src/server.js"
+  }
+}
