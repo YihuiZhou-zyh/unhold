@@ -1,5 +1,7 @@
 # Unhold — get paid for what you actually shipped
 
+![Unhold dashboard](docs/screenshot.png)
+
 **Unhold** is a get-paid copilot for small cross-border sellers (e.g. a Shenzhen Shopify seller shipping to the US) who take payments with PayPal.
 
 When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own (often Chinese) documents — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in English and Chinese with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
@@ -15,6 +17,8 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 - PayPal's HK/CN User Agreement: *"Risk-based holds generally remain in place for up to 30 days"*; releasing earlier depends on uploaded tracking and confirmed delivery.
 - Seller Protection requires online tracking showing "delivered" to the transaction address, and does **not** cover Guest Checkout / card payments when the seller is registered in China, Hong Kong or Singapore.
 - Small sellers already hold the facts (orders, purchase records, waybills, tracking) — but in Chinese, scattered across tools, and they surface only after a dispute starts, inside a 10-day response window.
+
+![How it works](docs/how-it-works.png)
 
 ## How PayPal and AI are used
 
