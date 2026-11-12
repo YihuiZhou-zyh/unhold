@@ -29,7 +29,7 @@ export async function token() {
 export async function api(method, path, body, extraHeaders = {}) {
   const headers = { Authorization: `Bearer ${await token()}`, ...extraHeaders };
   let payload = body;
-  if (body && !(body instanceof FormData)) {
+  if (body && !(body instanceof FormData) && !(body instanceof Uint8Array)) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
@@ -118,12 +118,20 @@ export const listDisputes = () => api('GET', '/v1/customer/disputes?page_size=20
 export const getDispute = (id) => api('GET', `/v1/customer/disputes/${did(id)}`);
 
 export function provideEvidence(disputeId, { evidences, files }) {
-  const fd = new FormData();
-  fd.append('input', new Blob([JSON.stringify({ evidences })], { type: 'application/json' }));
+  // Hand-built multipart so the JSON part matches PayPal's curl sample
+  // (-F 'input={...};type=application/json'): no filename on `input`. Node's FormData would add filename="blob".
+  const boundary = `----unhold${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+  const parts = [
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="input"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ evidences })}\r\n`),
+  ];
   for (const f of files) {
-    fd.append('evidence-file', new Blob([f.buffer], { type: f.type }), f.name);
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="evidence-file"; filename="${f.name}"\r\nContent-Type: ${f.type}\r\n\r\n`));
+    parts.push(Buffer.from(f.buffer), Buffer.from('\r\n'));
   }
-  return api('POST', `/v1/customer/disputes/${did(disputeId)}/provide-evidence`, fd);
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+  return api('POST', `/v1/customer/disputes/${did(disputeId)}/provide-evidence`, Buffer.concat(parts), {
+    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+  });
 }
 
 export const sendMessage = (disputeId, message) =>
