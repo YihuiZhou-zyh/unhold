@@ -4,138 +4,570 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Unhold · get paid for what you shipped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --ink:#14171f; --mute:#5b6372; --line:#e3e6ec; --pass:#127a45; --fail:#c0352b; --warn:#a86a00; --info:#1f5fbf; --accent:#0b3a7e; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.5 -apple-system, "PingFang SC", "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
-  header { background:var(--accent); color:#fff; padding:18px 24px; position:relative; }
-  header h1 { margin:0; font-size:22px; } header p { margin:4px 0 0; opacity:.85; }
-  main { max-width:1040px; margin:0 auto; padding:16px; display:grid; gap:14px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-  .card h2 { margin:0 0 8px; font-size:16px; display:flex; gap:8px; align-items:center; }
-  .step { background:var(--accent); color:#fff; border-radius:999px; width:24px; height:24px; display:inline-grid; place-items:center; font-size:13px; }
-  button { font:inherit; border:0; border-radius:8px; padding:8px 14px; background:var(--accent); color:#fff; cursor:pointer; }
-  button.ghost { background:#e9eef7; color:var(--accent); } button:disabled { opacity:.45; cursor:not-allowed; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  :root {
+    --paper:#eef2f7; --card:#ffffff; --ink:#0f1d35; --mute:#5d6982; --faint:#8b95aa; --line:#dfe5ee; --line2:#eef1f6;
+    --navy:#0a2a5e; --navy2:#061a3d; --blue:#0b5bd3;
+    --pass:#0f9b6c; --pass-bg:#e5f6ef; --fail:#d33b3b; --fail-bg:#fdecec; --warn:#c27a06; --warn-bg:#fdf3e1; --info:#2f6feb; --info-bg:#e8f0fe;
+    --mint:#3ee0a8; --amber:#ffb547;
+    --r-lg:16px; --r-md:11px;
+    --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; font:14.5px/1.5 "Manrope", -apple-system, "PingFang SC", "Segoe UI", sans-serif; background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased; font-feature-settings:"tnum" 1; }
+  .id { font-family:var(--mono); font-size:.92em; letter-spacing:-.01em; }
+  button, a.btn { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 16px; background:var(--blue); color:#fff; cursor:pointer; display:inline-flex; gap:8px; align-items:center; text-decoration:none; transition:transform .12s, box-shadow .12s, background .12s; box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 6px 16px -8px rgba(11,91,211,.7); }
+  button:hover:not(:disabled), a.btn:hover { transform:translateY(-1px); }
+  button:focus-visible, a.btn:focus-visible, summary:focus-visible, input:focus-visible { outline:3px solid #8db6ff; outline-offset:2px; }
+  button.ghost, a.btn.ghost { background:#fff; color:var(--navy); border:1px solid var(--line); box-shadow:none; }
+  button.small { padding:6px 12px; font-size:13px; }
+  button:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
+  button[data-armed] { background:var(--warn); box-shadow:0 0 0 4px rgba(194,122,6,.2); }
+  svg.i { width:16px; height:16px; flex:none; }
+
+  /* ---------- hero ---------- */
+  header.hero { position:relative; color:#fff; padding:20px 0 74px; background:
+      radial-gradient(900px 300px at 85% -10%, rgba(62,224,168,.16), transparent 60%),
+      radial-gradient(700px 360px at 0% 120%, rgba(11,91,211,.55), transparent 60%),
+      linear-gradient(160deg, var(--navy) 0%, var(--navy2) 100%); overflow:hidden; }
+  header.hero::before { content:""; position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px); background-size:22px 22px; mask-image:linear-gradient(180deg, #000 30%, transparent); pointer-events:none; }
+  .wrap { max-width:1120px; margin:0 auto; padding:0 20px; position:relative; }
+  .topbar { display:flex; align-items:center; gap:12px; }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; letter-spacing:-.02em; }
+  .logo .mark { width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg, var(--mint), #1aa3ff); display:grid; place-items:center; color:var(--navy2); }
+  .topbar .sp { flex:1; }
+  .tag { font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); display:inline-flex; gap:6px; align-items:center; }
+  .tag .dot { width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 0 3px rgba(255,181,71,.25); }
+  .lang { font-size:13px; color:rgba(255,255,255,.85); display:inline-flex; gap:6px; align-items:center; cursor:pointer; }
+  .hero h1 { margin:18px 0 4px; font-size:34px; line-height:1.12; letter-spacing:-.03em; font-weight:800; max-width:720px; }
+  .hero .lede { margin:0; color:rgba(255,255,255,.72); font-size:15px; max-width:640px; }
+
+  /* journey */
+  .journey { position:relative; margin-top:26px; display:grid; grid-template-columns:repeat(6, 1fr); }
+  .journey .rail, .journey .fill { position:absolute; top:19px; left:calc(100%/12); height:3px; border-radius:3px; }
+  .journey .rail { right:calc(100%/12); background:repeating-linear-gradient(90deg, rgba(255,255,255,.25) 0 6px, transparent 6px 12px); }
+  .journey .fill { width:0; background:linear-gradient(90deg, var(--mint), #9ff5d6); box-shadow:0 0 14px rgba(62,224,168,.6); transition:width 1.6s cubic-bezier(.6,.05,.2,1); }
+  .node { position:relative; text-align:center; padding:0 6px; }
+  .node .orb { width:41px; height:41px; margin:0 auto 8px; border-radius:50%; display:grid; place-items:center; background:#0d2a57; border:2px solid rgba(255,255,255,.22); color:rgba(255,255,255,.55); transition:all .4s; }
+  .node .orb svg { width:18px; height:18px; }
+  .node .lbl { font-weight:700; font-size:13.5px; color:rgba(255,255,255,.6); }
+  .node .sub { font-size:12px; color:rgba(255,255,255,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .node.done .orb { background:var(--mint); border-color:var(--mint); color:var(--navy2); box-shadow:0 0 0 6px rgba(62,224,168,.18), 0 0 24px rgba(62,224,168,.55); }
+  .node.alert .orb { background:var(--amber); border-color:var(--amber); color:#3a2300; box-shadow:0 0 0 6px rgba(255,181,71,.18), 0 0 24px rgba(255,181,71,.5); }
+  .node.decide .orb { border-style:dashed; border-color:rgba(255,255,255,.55); color:#fff; animation:breathe 2.4s ease-in-out infinite; }
+  .node.done .lbl, .node.alert .lbl, .node.decide .lbl { color:#fff; }
+  .node.done .sub, .node.alert .sub, .node.decide .sub { color:rgba(255,255,255,.78); }
+  .node.lit .orb { animation:pop .5s cubic-bezier(.3,1.6,.5,1) both; animation-delay:var(--d); }
+  @keyframes breathe { 50% { box-shadow:0 0 0 7px rgba(255,255,255,.08); } }
+  @keyframes pop { 0% { transform:scale(.6); } 100% { transform:scale(1); } }
+
+  /* KPIs */
+  .kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-top:-52px; position:relative; z-index:2; }
+  .kpi { background:var(--card); border-radius:var(--r-lg); padding:14px 16px 13px; box-shadow:0 1px 2px rgba(15,29,53,.06), 0 12px 28px -14px rgba(15,29,53,.28); border:1px solid #fff; }
+  .kpi .k { font-size:12.5px; color:var(--mute); font-weight:600; display:flex; gap:6px; align-items:center; }
+  .kpi .v { font-size:26px; font-weight:800; letter-spacing:-.03em; line-height:1.15; margin-top:4px; }
+  .kpi .v small { font-size:15px; color:var(--faint); font-weight:700; }
+  .kpi .s { font-size:12.5px; color:var(--mute); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .kpi .meter { height:5px; border-radius:5px; background:var(--line2); margin-top:8px; overflow:hidden; display:flex; }
+  .kpi .meter i { display:block; height:100%; }
+
+  /* sections */
+  main.wrap { display:grid; gap:18px; padding-top:18px; padding-bottom:60px; }
+  section.step { background:var(--card); border-radius:var(--r-lg); padding:20px 22px 22px; border:1px solid var(--line); scroll-margin-top:12px; }
+  .sh { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+  .num { width:30px; height:30px; flex:none; border-radius:50%; background:var(--navy); color:#fff; display:grid; place-items:center; font-weight:800; font-size:14px; }
+  .sh h2 { margin:0; font-size:19px; letter-spacing:-.02em; line-height:1.25; }
+  .sh .api { font-size:12.5px; color:var(--faint); font-weight:600; margin-top:1px; }
+  .sh > div:nth-child(2) { flex:1; min-width:0; }
+  .sh .right { margin-left:auto; flex:none; display:flex; gap:10px; align-items:center; }
   .mute { color:var(--mute); font-size:13px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; } td, th { text-align:left; padding:7px 6px; border-top:1px solid var(--line); vertical-align:top; }
-  .chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; color:#fff; }
-  .pass{background:var(--pass)} .fail{background:var(--fail)} .warn{background:var(--warn)} .explained{background:var(--info)}
-  .box { background:#f2f5fb; border-left:4px solid var(--accent); padding:10px 12px; border-radius:6px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
   .zh { color:var(--mute); font-size:13px; margin-top:4px; display:none; } body.bilingual .zh { display:block; }
-  pre { white-space:pre-wrap; background:#0f1420; color:#d7e0f0; padding:10px; border-radius:8px; font-size:12px; max-height:220px; overflow:auto; }
-  .ok { color:var(--pass); font-weight:600; } .bad { color:var(--fail); font-weight:600; }
-  #toast { position:fixed; right:16px; bottom:16px; background:#14171f; color:#fff; padding:10px 14px; border-radius:8px; display:none; max-width:420px; }
-  .src { font-size:12px; color:var(--info); }
+  .ok { color:var(--pass); font-weight:700; } .bad { color:var(--fail); font-weight:700; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#38507a; background:#f0f4fa; border:1px solid #e1e8f3; border-radius:6px; padding:1px 7px; white-space:nowrap; }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; border-radius:999px; padding:3px 10px 3px 7px; text-transform:capitalize; }
+  .pill svg { width:14px; height:14px; }
+  .pill.pass { color:var(--pass); background:var(--pass-bg); } .pill.fail { color:var(--fail); background:var(--fail-bg); }
+  .pill.warn { color:var(--warn); background:var(--warn-bg); } .pill.explained { color:var(--info); background:var(--info-bg); }
+  .pill.neutral { color:var(--navy); background:#e9eef7; }
+
+  /* step 1 */
+  .pay { display:grid; grid-template-columns:1.25fr 1fr; gap:16px; }
+  .facts { display:grid; grid-template-columns:repeat(2, 1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden; }
+  .fact { background:#fff; padding:11px 14px; min-width:0; }
+  .fact .k { font-size:12px; color:var(--mute); font-weight:600; }
+  .fact .v { font-weight:700; margin-top:2px; overflow-wrap:anywhere; }
+  .holdbox { border-radius:var(--r-md); padding:16px 18px; background:linear-gradient(135deg, #fff8ec, #fff); border:1px solid #f3dfb8; display:flex; flex-direction:column; gap:8px; }
+  .holdbox.clear { background:linear-gradient(135deg, #eafaf3, #fff); border-color:#bfe9d7; }
+  .holdbox .big { font-size:30px; font-weight:800; letter-spacing:-.03em; line-height:1; }
+  .holdbox .big small { font-size:15px; color:var(--mute); }
+
+  /* step 2 */
+  .ctrl { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .ctrl label { display:inline-flex; gap:6px; align-items:center; cursor:pointer; }
+  .srcline { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:10px 0 14px; font-size:12.5px; color:var(--mute); }
+  .callouts { display:grid; grid-template-columns:1.2fr 1fr; gap:12px; margin-bottom:14px; }
+  .callout { border-radius:var(--r-md); padding:13px 15px; position:relative; }
+  .callout b.t { display:flex; gap:8px; align-items:center; font-size:14px; margin-bottom:3px; }
+  .callout.ai { background:linear-gradient(135deg, #eef3ff, #f7f4ff); border:1px solid #dbe3fb; }
+  .callout.next { background:linear-gradient(135deg, #e8f8f1, #f4fbf8); border:1px solid #cdeedf; }
+  .badge-ai { margin-left:auto; font-size:11px; font-weight:800; color:#5b3fd1; background:#fff; border:1px solid #ddd4fb; border-radius:999px; padding:2px 8px; display:inline-flex; gap:4px; align-items:center; }
+  .badge-ai svg { width:12px; height:12px; }
+  .checks { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; }
+  .ck { position:relative; border:1px solid var(--line); border-radius:var(--r-md); padding:10px 12px 10px 15px; background:#fff; display:flex; flex-direction:column; gap:5px; overflow:hidden; }
+  .ck::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--c); }
+  .ck.pass { --c:var(--pass); } .ck.fail { --c:var(--fail); background:#fffafa; } .ck.warn { --c:var(--warn); } .ck.explained { --c:var(--info); background:#fbfcff; }
+  .ck .top { display:flex; align-items:center; gap:6px; }
+  .ck .conf { margin-left:auto; font-size:11px; color:var(--faint); font-weight:600; }
+  .ck h4 { margin:0; font-size:13.5px; line-height:1.3; letter-spacing:-.01em; }
+  .ck .det { font-size:12px; line-height:1.4; color:#2b3a57; background:var(--line2); border-radius:7px; padding:5px 8px; overflow-wrap:anywhere; }
+  .ck .note { font-size:12px; line-height:1.4; color:var(--mute); display:flex; gap:6px; }
+  .ck .note svg { width:13px; height:13px; color:#7a5cf0; margin-top:3px; flex:none; }
+  .ck .chips { margin-top:auto; gap:4px; }
+  .ck .chip { font-size:10.5px; padding:0 6px; }
+  .ck .chip svg { display:none; }
+  .anim .ck, .anim .st, .anim .callout { animation:rise .45s cubic-bezier(.2,.7,.2,1) both; animation-delay:calc(var(--n, 0) * 55ms); }
+  .anim .pill { animation:pillpop .4s cubic-bezier(.3,1.7,.5,1) both; animation-delay:calc(var(--n, 0) * 55ms + 200ms); }
+  @keyframes rise { from { opacity:0; transform:translateY(8px); } }
+  @keyframes pillpop { from { transform:scale(.4); opacity:0; } }
+  .empty { border:1.5px dashed var(--line); border-radius:var(--r-md); padding:22px; text-align:center; color:var(--mute); }
+
+  /* progress */
+  #verifyBusy:empty { display:none; }
+  .prog { margin-top:14px; border:1px solid #dbe3fb; background:linear-gradient(135deg, #f5f8ff, #fbfaff); border-radius:var(--r-md); padding:14px 16px; display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; }
+  .ps { display:flex; gap:10px; align-items:flex-start; opacity:.45; transition:opacity .3s; }
+  .ps.on, .ps.ok { opacity:1; }
+  .ps .ring { width:24px; height:24px; border-radius:50%; flex:none; border:2.5px solid #c9d5f3; display:grid; place-items:center; }
+  .ps.on .ring { border-color:#c9d5f3; border-top-color:var(--blue); animation:spin .8s linear infinite; }
+  .ps.ok .ring { background:var(--pass); border-color:var(--pass); color:#fff; animation:pillpop .35s cubic-bezier(.3,1.7,.5,1); }
+  .ps.ok .ring svg { width:14px; height:14px; }
+  .ps b { font-size:13px; display:block; } .ps span { font-size:12px; color:var(--mute); }
+  .prog .bar { grid-column:1 / -1; height:4px; border-radius:4px; background:#e1e8f8; overflow:hidden; }
+  .prog .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg, var(--blue), #7a5cf0); transition:width .8s ease; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #verify.busy { opacity:.35; filter:saturate(.4); transition:opacity .3s; pointer-events:none; }
+
+  /* grounding */
+  .guard { display:grid; grid-template-columns:250px 1fr; gap:16px; margin-top:18px; padding-top:18px; border-top:1px solid var(--line2); }
+  .gsum { align-self:start; border-radius:var(--r-md); padding:16px; background:linear-gradient(160deg, var(--navy), var(--navy2)); color:#fff; display:flex; flex-direction:column; gap:8px; }
+  .gsum .shield { width:44px; height:44px; border-radius:12px; background:rgba(62,224,168,.15); color:var(--mint); display:grid; place-items:center; }
+  .gsum .shield svg { width:24px; height:24px; }
+  .gsum .n { font-size:30px; font-weight:800; letter-spacing:-.03em; line-height:1; }
+  .gsum p { margin:0; font-size:12.5px; color:rgba(255,255,255,.72); }
+  .gsum h3 { margin:0; font-size:15px; }
+  .stmts { display:flex; flex-direction:column; gap:7px; }
+  .st { display:flex; gap:11px; align-items:flex-start; border:1px solid var(--line); border-radius:var(--r-md); padding:9px 12px; background:#fff; }
+  .st .ic { width:26px; height:26px; flex:none; border-radius:8px; display:grid; place-items:center; background:var(--pass-bg); color:var(--pass); }
+  .st.blocked { background:#fffafa; border-color:#f5cccc; } .st.blocked .ic { background:var(--fail-bg); color:var(--fail); }
+  .st .tx { flex:1; min-width:0; font-size:13.5px; }
+  .st .tx .chips { margin-top:4px; }
+  .st .why { color:var(--fail); font-size:12.5px; font-weight:600; margin-top:3px; }
+  .st .verdict { font-size:11.5px; font-weight:800; white-space:nowrap; }
+  .st .verdict.g { color:var(--pass); } .st .verdict.b { color:var(--fail); }
+  .po { margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:13px; border:1px dashed #cdd6e6; border-radius:var(--r-md); padding:9px 13px; background:#fafcff; }
+  .po .zhsrc { font-weight:700; color:#38507a; }
+  .po .arrow { color:var(--faint); }
+
+  /* step 3 */
+  .track { display:grid; grid-template-columns:1.15fr 1fr; gap:16px; align-items:stretch; }
+  .label { border-radius:var(--r-md); border:1px solid var(--line); background:repeating-linear-gradient(135deg, #fff 0 14px, #fbfcfe 14px 28px); padding:16px 18px; display:grid; grid-template-columns:1fr auto; gap:6px 16px; position:relative; }
+  .label .tn { grid-column:1 / -1; font-family:var(--mono); font-size:24px; font-weight:600; letter-spacing:.02em; color:var(--navy); }
+  .label .barcode { grid-column:1 / -1; height:34px; background:repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px, transparent 5px 8px, var(--ink) 8px 11px, transparent 11px 12px); opacity:.85; border-radius:2px; }
+  .label .k { font-size:12px; color:var(--mute); font-weight:600; }
+  .label .v { font-weight:700; font-size:13.5px; }
+  .label .carrier { display:flex; justify-content:space-between; grid-column:1 / -1; align-items:center; }
+  .pushbox { border-radius:var(--r-md); background:#f6f8fc; border:1px solid var(--line); padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+  .rule { display:flex; gap:10px; font-size:13px; color:#33425f; }
+  .rule svg { color:var(--blue); margin-top:2px; }
+  #trackOut { font-size:13.5px; }
+  #trackOut .ok, #trackOut .bad { display:inline-flex; gap:6px; align-items:center; }
+
+  /* step 4 */
+  .dlist { display:flex; flex-direction:column; gap:8px; }
+  .drow { display:grid; grid-template-columns:1.2fr 1.4fr 1fr .6fr auto; gap:12px; align-items:center; border:1px solid var(--line); border-radius:var(--r-md); padding:10px 14px; }
+  .drow .k { font-size:11.5px; color:var(--faint); font-weight:600; }
+  .drow .v { font-weight:700; font-size:13.5px; }
+  .case { margin-top:12px; border-radius:var(--r-lg); border:1px solid var(--line); overflow:hidden; display:grid; grid-template-columns:1.3fr 1fr; animation:rise .4s cubic-bezier(.2,.7,.2,1) both; }
+  .case .head { grid-column:1 / -1; display:flex; align-items:center; gap:12px; padding:14px 18px; background:linear-gradient(135deg, #0a2a5e, #0d3a7c); color:#fff; flex-wrap:wrap; }
+  .case .head .t { font-size:16px; font-weight:800; letter-spacing:-.01em; }
+  .case .head .sub { font-size:12.5px; color:rgba(255,255,255,.7); }
+  .case .head .amt { margin-left:auto; font-size:24px; font-weight:800; letter-spacing:-.03em; }
+  .case .head .pill { background:rgba(255,181,71,.18); color:var(--amber); }
+  .tl { padding:16px 18px 6px; position:relative; }
+  .tl .ev { position:relative; padding:0 0 14px 30px; }
+  .tl .ev::before { content:""; position:absolute; left:9px; top:20px; bottom:-2px; width:2px; background:var(--line); }
+  .tl .ev:last-child::before { display:none; }
+  .tl .dot { position:absolute; left:0; top:1px; width:20px; height:20px; border-radius:50%; display:grid; place-items:center; background:var(--line2); color:var(--mute); border:2px solid #fff; box-shadow:0 0 0 1px var(--line); }
+  .tl .dot svg { width:11px; height:11px; }
+  .tl .ev.buyer .dot { background:var(--warn-bg); color:var(--warn); box-shadow:0 0 0 1px #f3dfb8; }
+  .tl .ev.hold .dot { background:var(--fail-bg); color:var(--fail); box-shadow:0 0 0 1px #f5cccc; }
+  .tl .ev.seller .dot { background:var(--pass); color:#fff; box-shadow:0 0 0 1px var(--pass); }
+  .tl .ev.now .dot { background:#fff; color:var(--blue); box-shadow:0 0 0 2px var(--blue); animation:breathe2 2s infinite; }
+  @keyframes breathe2 { 50% { box-shadow:0 0 0 2px var(--blue), 0 0 0 7px rgba(11,91,211,.15); } }
+  .tl .ev b { font-size:13.5px; } .tl .ev .when { font-size:12px; color:var(--faint); margin-left:6px; }
+  .tl .ev .d { font-size:12.5px; color:var(--mute); }
+  .side { border-left:1px solid var(--line); padding:16px 18px; display:flex; flex-direction:column; gap:12px; background:#fafbfd; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:5px 14px; font-size:13px; }
+  .kv .k { color:var(--mute); } .kv .v { font-weight:700; overflow-wrap:anywhere; }
+  .acts { display:flex; gap:8px; flex-wrap:wrap; }
+  details.sbx { border-top:1px dashed var(--line); padding-top:10px; }
+  details.sbx summary { cursor:pointer; font-size:12.5px; font-weight:700; color:var(--mute); list-style:none; display:flex; gap:6px; align-items:center; }
+  details.sbx summary::-webkit-details-marker { display:none; }
+  details.sbx[open] summary svg { transform:rotate(90deg); }
+  details.sbx summary svg { width:12px; height:12px; transition:transform .2s; }
+  details.sbx .acts { margin-top:10px; }
+
+  #toast { position:fixed; right:18px; bottom:18px; background:var(--ink); color:#fff; padding:12px 16px; border-radius:12px; display:none; max-width:440px; box-shadow:0 18px 40px -12px rgba(15,29,53,.5); font-weight:600; font-size:13.5px; z-index:10; animation:rise .3s both; }
+
+  @media (max-width: 900px) {
+    .checks { grid-template-columns:repeat(2, 1fr); } .kpis { grid-template-columns:repeat(2, 1fr); }
+    .pay, .track, .callouts, .guard, .case { grid-template-columns:1fr; } .side { border-left:0; border-top:1px solid var(--line); }
+    .prog { grid-template-columns:1fr 1fr; } .drow { grid-template-columns:1fr 1fr; }
+    .journey .node .sub { display:none; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding:0 16px; } .checks, .kpis { grid-template-columns:1fr; } .hero h1 { font-size:26px; }
+    .journey .node .lbl { font-size:11px; } .node .orb { width:32px; height:32px; } .journey .rail, .journey .fill { top:15px; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Unhold</h1>
-  <p style="position:absolute;top:14px;right:20px;margin:0;font-size:13px"><label><input type="checkbox" onchange="document.body.classList.toggle('bilingual', this.checked)"> 中文 explanations</label></p><p>Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have. · PayPal sandbox</p>
-</header>
-<main>
-  <section class="card">
-    <h2><span class="step">1</span> Payment & hold status <span class="mute">(PayPal Orders v2 · Payments · Balances)</span></h2>
-    <div id="pay">Loading…</div>
-  </section>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M7 7l10 10M17 7L7 17"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 11v6M12 7.5v.1"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M12 3.5l9.5 16.5h-19z"/><path stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 10v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path stroke="currentColor" stroke-width="2.4" d="M6 6l12 12"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2zM19 15l1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path stroke="currentColor" stroke-width="2.2" d="M3 10h18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M6 3h8l4 4v14H6z"/><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M2.5 6h11v10h-11zM13.5 9.5h4l3.5 3.5v3h-7.5z"/><circle cx="7" cy="17.5" r="2" fill="currentColor"/><circle cx="17.5" cy="17.5" r="2" fill="currentColor"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M4 21c1-4.5 4-6.5 8-6.5s7 2 8 6.5"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v16M7 20h10M5 7h14M5 7l-3 6a3 3 0 006 0zM19 7l-3 6a3 3 0 006 0z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><path fill="none" stroke="currentColor" stroke-width="2.2" d="M8 10.5V8a4 4 0 018 0v2.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M3 11.5L21 3l-7.5 18-2.5-7.5z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></symbol>
+</svg>
 
-  <section class="card">
-    <h2><span class="step">2</span> Verify fulfillment from the seller's own documents</h2>
-    <div class="row">
-      <button id="btnVerify">Run verification</button>
-      <label class="mute"><input type="checkbox" id="weak" /> use an untracked economy parcel instead (contrast case)</label>
-      <span id="verifyBusy" class="mute"></span>
+<header class="hero">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="logo"><span class="mark"><svg class="i" style="width:18px;height:18px"><use href="#i-lock"/></svg></span>Unhold</div>
+      <span class="tag"><span class="dot"></span>PayPal sandbox</span>
+      <span class="sp"></span>
+      <label class="lang"><input type="checkbox" onchange="document.body.classList.toggle('bilingual', this.checked)"> 中文 explanations</label>
     </div>
-    <p class="mute">Sources: Shopify order export · Chinese supplier purchase order (1688) · forwarder waybill · tracking feed. Mock seller documents, real PayPal sandbox data. Buyer name & street are never sent to the AI.</p>
-    <div id="verify"></div>
+    <h1>Get paid for what you actually shipped.</h1>
+    <p class="lede">Your PayPal money is held. Here is why, what PayPal's rules ask for, and the evidence you already have.</p>
+    <div class="journey" id="journey" aria-label="Money journey"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="kpis" id="kpis"></div>
+</div>
+
+<main class="wrap">
+  <section class="step" id="step1">
+    <div class="sh"><span class="num">1</span><div><h2>Payment &amp; hold status</h2><div class="api">PayPal Orders v2 · Payments · Balances</div></div></div>
+    <div id="pay" class="mute">Loading…</div>
   </section>
 
-  <section class="card">
-    <h2><span class="step">3</span> Approve & push tracking to PayPal <span class="mute">(Orders v2 /track)</span></h2>
-    <p class="mute">PayPal's rule: holds are released ~24h after a supported carrier confirms delivery. Pushing is blocked if any check failed.</p>
-    <div class="row"><button id="btnTrack" disabled>Approve & add tracking</button><span id="trackOut" class="mute"></span></div>
+  <section class="step" id="step2">
+    <div class="sh">
+      <span class="num">2</span>
+      <div><h2>Verify fulfillment from your own documents</h2><div class="api">Deterministic checks · Qwen on Alibaba Cloud Model Studio · grounding guard</div></div>
+      <div class="right ctrl">
+        <label class="mute"><input type="checkbox" id="weak" /> Contrast case: untracked economy parcel</label>
+        <button id="btnVerify"><svg class="i"><use href="#i-play"/></svg>Run verification</button>
+      </div>
+    </div>
+    <div class="srcline"><span>Reads</span><span class="chip">Shopify order export</span><span class="chip">1688 supplier PO (Chinese)</span><span class="chip">Forwarder waybill</span><span class="chip">Tracking feed</span><span>· Mock seller documents, real PayPal sandbox data. Buyer name and street never go to the AI.</span></div>
+    <div id="verifyBusy"></div>
+    <div id="verify"><div class="empty">Run verification to cross-check your documents against the PayPal order.</div></div>
   </section>
 
-  <section class="card">
-    <h2><span class="step">4</span> Answer a dispute with the same evidence <span class="mute">(Disputes v1)</span></h2>
+  <section class="step" id="step3">
+    <div class="sh"><span class="num">3</span><div><h2>Approve &amp; push tracking to PayPal</h2><div class="api">Orders v2 /track</div></div></div>
+    <div class="track">
+      <div class="label" id="parcel"><div class="mute">Run verification to load the waybill.</div></div>
+      <div class="pushbox">
+        <div class="rule"><svg class="i"><use href="#i-info"/></svg><div>PayPal releases holds about 24 hours after a supported carrier confirms delivery. Pushing is blocked if any check failed.</div></div>
+        <div class="row"><button id="btnTrack" disabled><svg class="i"><use href="#i-send"/></svg>Approve &amp; add tracking</button></div>
+        <div id="trackOut" class="mute"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="step4">
+    <div class="sh"><span class="num">4</span><div><h2>Answer a dispute with the same evidence</h2><div class="api">Disputes v1</div></div></div>
     <div id="disputes" class="mute">Loading…</div>
     <div id="disputeDetail"></div>
   </section>
 </main>
-<div id="toast"></div>
+<div id="toast" role="status"></div>
 <script>
 const $ = (id) => document.getElementById(id);
 const h = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ic = (name, cls = 'i') => `<svg class="${cls}"><use href="#i-${name}"/></svg>`;
 const toast = (m, ms = 4000) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', ms); };
+const fmt = (iso) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); };
+const human = (code) => ({ MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'Item not received', MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'Not as described', UNAUTHORISED: 'Unauthorized', UNDER_REVIEW: 'Under PayPal review', WAITING_FOR_SELLER_RESPONSE: 'Waiting for your response', WAITING_FOR_BUYER_RESPONSE: 'Waiting for buyer', RESOLVED: 'Resolved', OPEN: 'Open' }[code] || String(code ?? '').toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()));
+const STATUS_ICON = { pass: 'check', fail: 'x', warn: 'alert', explained: 'info' };
+const chips = (arr) => `<div class="chips">${(arr || []).map((s) => `<span class="chip">${ic('doc')}${h(s)}</span>`).join('')}</div>`;
 async function call(path, body) {
   const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
 }
-let S = {};
+let S = {}, DETAIL = null, autoOpened = false, journeyDrawn = false;
+
+function renderJourney() {
+  const o = S.paypalOrder, a = S.lastAnalysis, cap = o?.purchase_units?.[0]?.payments?.captures?.[0];
+  const ds = (S.disputes || []).filter((d) => !d.error);
+  const d = ds[0];
+  const failed = a ? a.checks.filter((c) => c.status === 'fail').length : 0;
+  const trackers = o?.purchase_units?.[0]?.shipping?.trackers || [];
+  const tn = S.tracked?.tracking || (trackers[0]?.id || '').split('-').pop();
+  const sellerInfo = DETAIL?.dispute_id === d?.dispute_id && (DETAIL.supporting_info || []).some((s) => s.source === 'SUBMITTED_BY_SELLER');
+  const evOnFile = !!d && (sellerInfo || ['UNDER_REVIEW', 'RESOLVED'].includes(d.status));
+  const amt = o?.purchase_units?.[0]?.amount;
+  const nodes = [
+    { l: 'Paid', i: 'card', st: o && (o.status === 'COMPLETED' || cap) ? 'done' : '', sub: o ? `$${amt?.value || ''} · ${o.status}` : 'Waiting' },
+    { l: 'Verified', i: 'check', st: !a ? '' : failed ? 'alert' : 'done', sub: !a ? 'Not run' : failed ? `${failed} failed` : `${a.checks.length} checks` },
+    { l: 'Tracking pushed', i: 'truck', st: S.tracked || trackers.length ? 'done' : '', sub: tn || 'Not yet' },
+    { l: 'Buyer claim', i: 'user', st: d ? 'alert' : '', sub: d ? human(d.reason) : 'None' },
+    { l: 'Evidence on file', i: 'shield', st: evOnFile ? 'done' : '', sub: evOnFile ? 'Submitted to PayPal' : d ? 'Needed' : '—' },
+    { l: 'Release', i: 'scale', st: 'decide', sub: d?.status === 'RESOLVED' ? 'Decided' : 'PayPal decides' },
+  ];
+  let last = 0; nodes.forEach((n, k) => { if (n.st === 'done' || n.st === 'alert') last = k; });
+  $('journey').innerHTML = '<div class="rail"></div><div class="fill" id="jfill"></div>' + nodes.map((n, k) =>
+    `<div class="node ${h(n.st)} ${journeyDrawn ? '' : 'lit'}" style="--d:${k * 220}ms"><div class="orb">${ic(n.st === 'alert' && n.i === 'check' ? 'x' : n.i)}</div><div class="lbl">${h(n.l)}</div><div class="sub">${h(n.sub)}</div></div>`).join('');
+  const pct = (last / (nodes.length - 1)) * (100 - 100 / 6);
+  const fill = $('jfill');
+  if (journeyDrawn) fill.style.width = pct + '%';
+  else requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pct + '%'; }));
+  journeyDrawn = true;
+}
+
+function renderKpis() {
+  const o = S.paypalOrder, a = S.lastAnalysis, cap = o?.purchase_units?.[0]?.payments?.captures?.[0];
+  const ds = (S.disputes || []).filter((d) => !d.error), d = ds[0];
+  const amt = cap?.amount || o?.purchase_units?.[0]?.amount;
+  const held = cap && cap.status !== 'COMPLETED';
+  const cnt = (s) => a ? a.checks.filter((c) => c.status === s).length : 0;
+  const tot = a ? a.checks.length : 0, pass = cnt('pass'), expl = cnt('explained'), fail = cnt('fail'), warn = cnt('warn');
+  const stm = a?.ai?.evidence_statements || [], g = stm.filter((s) => s.grounded).length;
+  const seg = (n, c) => tot ? `<i style="width:${(n / tot) * 100}%;background:${c}"></i>` : '';
+  $('kpis').innerHTML = `
+    <div class="kpi"><div class="k">${ic('lock')}Amount at stake</div><div class="v">$${h(amt?.value || '—')} <small>${h(amt?.currency_code || '')}</small></div><div class="s">${cap ? (held ? `Held · ${h(cap.status_details?.reason ? human(cap.status_details.reason) : cap.status)}` : `Capture ${h(cap.status)}`) : 'No capture yet'}</div></div>
+    <div class="kpi"><div class="k">${ic('check')}Checks passed</div><div class="v">${a ? `${h(pass)}${expl ? ` <small>+ ${h(expl)} explained</small>` : ''}` : '—'} <small>/ ${h(tot || 8)}</small></div><div class="meter">${seg(pass, 'var(--pass)')}${seg(expl, 'var(--info)')}${seg(warn, 'var(--warn)')}${seg(fail, 'var(--fail)')}</div></div>
+    <div class="kpi"><div class="k">${ic('shield')}Evidence grounded</div><div class="v">${stm.length ? h(g) : '—'} <small>/ ${h(stm.length || '—')}</small></div><div class="s">${stm.length ? (g === stm.length ? 'Every statement cites a source' : `${h(stm.length - g)} blocked by the guard`) : 'Run verification'}</div></div>
+    <div class="kpi"><div class="k">${ic('scale')}Dispute</div><div class="v" style="font-size:20px;padding:4px 0 3px">${d ? h(human(d.status)) : 'None'}</div><div class="s">${d ? `${h(human(d.reason))} · stage ${h(String(d.dispute_life_cycle_stage || '').toLowerCase())}` : 'No buyer claim on this order'}</div></div>`;
+}
+
 async function refresh() {
   S = await call('/api/state');
   const o = S.paypalOrder, cap = o?.purchase_units?.[0]?.payments?.captures?.[0];
-  $('pay').innerHTML = !o ? 'No order yet — run <code>npm run create-order</code>.' : `
-    <table><tr><th>PayPal order</th><td>${h(o.id)} · <b>${h(o.status)}</b></td></tr>
-    <tr><th>Item</th><td>${S.order.item_name} × ${S.order.quantity} · ${S.order.amount} USD · shop order ${S.order.shop_order_id}</td></tr>
-    <tr><th>Capture</th><td>${cap ? `${h(cap.id)} · <b>${h(cap.status)}</b>${cap.status_details ? ' · reason ' + h(cap.status_details.reason) : ''}` : '—'}</td></tr>
-    <tr><th>Paid with</th><td>${Object.keys(o.payment_source || {}).join(', ') || '—'}</td></tr></table>
-    ${o.status === 'APPROVED' ? '<button id="btnCap">Capture payment</button>' : ''}`;
+  const held = cap && cap.status !== 'COMPLETED';
+  $('pay').className = '';
+  $('pay').innerHTML = !o ? '<div class="empty">No order yet — run <code>npm run create-order</code>.</div>' : `
+    <div class="pay">
+      <div class="facts">
+        <div class="fact"><div class="k">PayPal order</div><div class="v"><span class="id">${h(o.id)}</span> <span class="pill ${o.status === 'COMPLETED' ? 'pass' : 'neutral'}">${h(o.status)}</span></div></div>
+        <div class="fact"><div class="k">Shop order</div><div class="v"><span class="id">${h(S.order.shop_order_id)}</span></div></div>
+        <div class="fact"><div class="k">Item</div><div class="v">${h(S.order.item_name)} × ${h(S.order.quantity)}</div></div>
+        <div class="fact"><div class="k">Paid with</div><div class="v">${h(Object.keys(o.payment_source || {}).join(', ') || '—')}</div></div>
+        <div class="fact"><div class="k">Capture</div><div class="v"><span class="id">${cap ? h(cap.id) : '—'}</span></div></div>
+        <div class="fact"><div class="k">Seller Protection</div><div class="v">${h(cap?.seller_protection?.status || '—')}</div></div>
+      </div>
+      <div class="holdbox ${held ? '' : 'clear'}">
+        <div class="mute" style="font-weight:600">${held ? 'Money on hold' : 'Payment'}</div>
+        <div class="big">$${h(cap?.amount?.value || S.order.amount)} <small>${h(cap?.amount?.currency_code || S.order.currency)}</small></div>
+        <div class="row">${cap ? `<span class="pill ${held ? 'warn' : 'pass'}">${ic(held ? 'lock' : 'check')}${h(cap.status)}</span>` : ''}${cap?.status_details ? `<span class="mute">reason <b class="id">${h(cap.status_details.reason)}</b></span>` : ''}</div>
+        ${cap?.seller_protection?.dispute_categories?.length ? `<div class="mute" style="margin-top:auto">Seller Protection covers</div><div class="chips">${cap.seller_protection.dispute_categories.map((c) => `<span class="chip">${ic('shield')}${h(human(c))}</span>`).join('')}</div>` : ''}
+        ${o.status === 'APPROVED' ? '<div><button id="btnCap">Capture payment</button></div>' : ''}
+      </div>
+    </div>`;
   if ($('btnCap')) $('btnCap').onclick = async () => { await call('/api/capture', {}); toast('Captured'); refresh(); };
   if (S.lastAnalysis) renderAnalysis(S.lastAnalysis);
-  if (S.tracked) $('trackOut').innerHTML = `<span class="ok">✓ tracking ${h(S.tracked.tracking)} added at ${h(S.tracked.at)}</span>`;
+  if (S.tracked) $('trackOut').innerHTML = `<span class="ok">${ic('check')}Tracking ${h(S.tracked.tracking)} added to PayPal · ${h(fmt(S.tracked.at))}</span>`;
   const ds = (S.disputes || []).filter((d) => !d.error);
-  $('disputes').innerHTML = ds.length ? '<table><tr><th>Dispute</th><th>Reason</th><th>Status</th><th>Amount</th><th></th></tr>' + ds.map((d) =>
-    `<tr><td>${h(d.dispute_id)}</td><td>${h(d.reason)}</td><td>${h(d.status)}</td><td>${h(d.dispute_amount?.value)}</td><td><button class="ghost" data-id="${h(d.dispute_id)}" onclick="openDispute(this.dataset.id)">Open</button></td></tr>`).join('') + '</table>'
-    : (S.disputes?.[0]?.error ? 'Disputes API: ' + S.disputes[0].error : 'No disputes yet. (Buyer opens one in the sandbox Resolution Center.)');
+  $('disputes').className = ds.length ? 'dlist' : 'mute';
+  $('disputes').innerHTML = ds.length ? ds.map((d) => `
+    <div class="drow">
+      <div><div class="k">Dispute</div><div class="v id">${h(d.dispute_id)}</div></div>
+      <div><div class="k">Reason</div><div class="v">${h(human(d.reason))}</div></div>
+      <div><div class="k">Status</div><div class="v"><span class="pill warn">${h(human(d.status))}</span></div></div>
+      <div><div class="k">Amount</div><div class="v">$${h(d.dispute_amount?.value)}</div></div>
+      <div><button class="ghost small" data-open="${h(d.dispute_id)}">Open case</button></div>
+    </div>`).join('')
+    : `<div class="empty">${S.disputes?.[0]?.error ? 'Disputes API: ' + h(S.disputes[0].error) : 'No disputes yet. (Buyer opens one in the sandbox Resolution Center.)'}</div>`;
+  renderJourney(); renderKpis();
+  if (!autoOpened && ds.length) { autoOpened = true; openDispute(ds[0].dispute_id).catch((e) => toast(e.message, 8000)); }
 }
-function renderAnalysis(a) {
+
+function renderAnalysis(a, animate = false) {
   const notes = Object.fromEntries((a.ai.check_notes || []).map((n) => [n.check_id, n]));
   const failed = a.checks.filter((c) => c.status === 'fail').length;
+  const stm = a.ai.evidence_statements || [], g = stm.filter((s) => s.grounded).length;
+  $('verify').className = animate ? 'anim' : '';
   $('verify').innerHTML = `
-    <div class="box"><b>Why is this money held?</b><div>${h(a.ai.hold_explainer_en)}</div><div class="zh">${h(a.ai.hold_explainer_zh)}</div></div>
-    <table style="margin-top:10px"><tr><th>Check</th><th>Result</th><th>Detail (from documents)</th><th>AI explanation</th></tr>
-    ${a.checks.map((c) => `<tr><td>${h(c.title)}<div class="src">${h(c.sources.join(' · '))}</div></td><td><span class="chip ${h(c.status)}">${h(c.status)}</span></td><td>${h(c.detail)}</td>
-      <td>${h(notes[c.id]?.note_en)}<div class="zh">${h(notes[c.id]?.note_zh)}</div><div class="mute">confidence: ${h(notes[c.id]?.confidence || '-')}</div></td></tr>`).join('')}</table>
-    <div class="box" style="margin-top:10px"><b>Next step:</b> ${h(a.ai.recommendation_en)}<div class="zh">${h(a.ai.recommendation_zh)}</div></div>
-    <h3 style="font-size:15px;margin:14px 0 6px">Evidence statements (grounding guard)</h3>
-    <table>${a.ai.evidence_statements.map((s) => `<tr><td>${s.grounded ? '<span class="ok">✓ grounded</span>' : '<span class="bad">✗ blocked</span>'}</td><td>${h(s.text_en)}<div class="src">${h(s.sources.join(' · '))}</div>${s.problems.length ? '<div class="bad">' + s.problems.map(h).join('; ') + '</div>' : ''}</td></tr>`).join('')}</table>
-    <p class="mute">Purchase order extracted by Qwen from Chinese: ${h(a.purchase.item_en)} · qty ${h(a.purchase.quantity)} · ¥${h(a.purchase.total_cny)} · ${h(a.purchase.date)}</p>`;
+    <div class="callouts">
+      <div class="callout ai" style="--n:0"><b class="t">${ic('spark')}Why is this money held?<span class="badge-ai">${ic('spark')}AI · Qwen</span></b><div>${h(a.ai.hold_explainer_en)}</div><div class="zh">${h(a.ai.hold_explainer_zh)}</div></div>
+      <div class="callout next" style="--n:1"><b class="t" style="color:var(--pass)">${ic('chev')}Next step</b><div>${h(a.ai.recommendation_en)}</div><div class="zh">${h(a.ai.recommendation_zh)}</div></div>
+    </div>
+    <div class="checks" id="checks">
+    ${a.checks.map((c, k) => { const n = notes[c.id]; return `
+      <div class="ck ${h(c.status)}" style="--n:${k + 2}">
+        <div class="top"><span class="pill ${h(c.status)}">${ic(STATUS_ICON[c.status] || 'info')}${h(c.status)}</span>${n?.confidence ? `<span class="conf">${h(n.confidence)} confidence</span>` : ''}</div>
+        <h4>${h(c.title)}</h4>
+        <div class="det">${h(c.detail)}</div>
+        ${n ? `<div class="note">${ic('spark')}<div>${h(n.note_en)}<div class="zh">${h(n.note_zh)}</div></div></div>` : ''}
+        ${chips(c.sources)}
+      </div>`; }).join('')}
+    </div>
+    <div class="guard" id="guard">
+      <div class="gsum">
+        <div class="shield">${ic('shield')}</div>
+        <h3>Grounding guard</h3>
+        <div class="n">${h(g)} <span style="font-size:16px;opacity:.6">/ ${h(stm.length)} grounded</span></div>
+        <p>Every sentence the AI drafts for PayPal is checked against your documents. A claim no document supports is blocked before it reaches the evidence file.</p>
+      </div>
+      <div>
+        <div class="stmts">
+        ${stm.map((s, k) => `
+          <div class="st ${s.grounded ? '' : 'blocked'}" style="--n:${k + 10}">
+            <div class="ic">${ic(s.grounded ? 'shield' : 'ban')}</div>
+            <div class="tx">${h(s.text_en)}${chips(s.sources)}${s.problems.length ? `<div class="why">${s.problems.map(h).join('; ')}</div>` : ''}</div>
+            <span class="verdict ${s.grounded ? 'g' : 'b'}">${s.grounded ? 'Grounded' : 'Blocked'}</span>
+          </div>`).join('')}
+        </div>
+        <div class="po"><span class="badge-ai" style="margin:0">${ic('spark')}Qwen read</span><span class="zhsrc">${h(a.purchase.item_zh)}</span><span class="arrow">${ic('chev')}</span><span><b>${h(a.purchase.item_en)}</b> · qty ${h(a.purchase.quantity)} · ¥${h(a.purchase.total_cny)} · ${h(a.purchase.date)}</span></div>
+      </div>
+    </div>`;
+  const w = a.waybill;
+  $('parcel').innerHTML = !w ? '<div class="mute">No waybill loaded.</div>' : `
+    <div class="carrier"><div><div class="k">Carrier</div><div class="v">${h(w.forwarder)}</div></div><span class="pill neutral">${h(w.carrier_code_paypal || 'carrier n/a')}</span></div>
+    <div class="tn">${h(w.tracking_number || 'No tracking number')}</div>
+    <div class="barcode" aria-hidden="true"></div>
+    <div><div class="k">Service</div><div class="v">${h(w.service)}</div></div>
+    <div><div class="k">Handover</div><div class="v">${h(w.handover_date)}</div></div>
+    <div><div class="k">Destination</div><div class="v">${h(w.consignee_city)}, ${h(w.consignee_state)} ${h(w.consignee_postal_code)}</div></div>
+    <div><div class="k">Pieces · weight</div><div class="v">${h(w.pieces)} · ${h(w.gross_weight_kg)} kg</div></div>`;
   $('btnTrack').disabled = failed > 0 || !a.holdStatus.capture_id || !!S.tracked;
-  if (failed) $('trackOut').innerHTML = `<span class="bad">Blocked: ${h(failed)} check(s) failed — fix before pushing tracking.</span>`;
-  else if (!S.tracked) $('trackOut').textContent = '';
+  if (failed) $('trackOut').innerHTML = `<span class="bad">${ic('ban')}Blocked: ${h(failed)} check(s) failed — fix before pushing tracking.</span>`;
+  else if (!S.tracked) $('trackOut').textContent = 'Ready: all checks passed or are explained.';
+}
+
+const STAGES = [
+  ['Reading Chinese PO', 'Qwen extracts the 1688 order'],
+  ['Cross-checking 8 rules', 'Amount, SKU, weight, route…'],
+  ['Drafting evidence', 'Plain-English statements for PayPal'],
+  ['Grounding guard', 'Every claim traced to a document'],
+];
+function startProgress() {
+  const box = $('verifyBusy');
+  box.innerHTML = `<div class="prog">${STAGES.map(([t, s], k) => `<div class="ps" id="ps${k}"><div class="ring"></div><div><b>${h(t)}</b><span>${h(s)}</span></div></div>`).join('')}<div class="bar"><i id="pbar"></i></div></div>`;
+  let k = -1;
+  const step = () => {
+    if (k >= 0) { $('ps' + k).className = 'ps ok'; $('ps' + k).querySelector('.ring').innerHTML = ic('check'); }
+    k++; if (k < STAGES.length) { $('ps' + k).className = 'ps on'; $('pbar').style.width = ((k + 0.5) / STAGES.length) * 100 + '%'; }
+  };
+  step();
+  const delays = [4200, 4800, 4500];
+  let t, idx = 0;
+  const next = () => { if (idx < delays.length) t = setTimeout(() => { step(); idx++; next(); }, delays[idx]); };
+  next();
+  return {
+    finish: () => new Promise((res) => { clearTimeout(t); const fin = () => { if (k < STAGES.length) { step(); setTimeout(fin, 260); } else { $('pbar').style.width = '100%'; setTimeout(res, 450); } }; fin(); }),
+    stop: () => clearTimeout(t),
+  };
 }
 $('btnVerify').onclick = async () => {
-  $('btnVerify').disabled = true; $('verifyBusy').textContent = 'Reading documents with Qwen, running checks…';
-  try { renderAnalysis(await call('/api/analyze', { waybill: $('weak').checked ? 'weak' : 'strong' })); S = await call('/api/state'); renderAnalysis(S.lastAnalysis); }
-  catch (e) { toast(e.message, 8000); } finally { $('btnVerify').disabled = false; $('verifyBusy').textContent = ''; }
+  $('btnVerify').disabled = true; $('verify').classList.add('busy');
+  const p = startProgress();
+  try {
+    const res = await call('/api/analyze', { waybill: $('weak').checked ? 'weak' : 'strong' });
+    await p.finish();
+    S = await call('/api/state'); renderAnalysis(S.lastAnalysis || res, true); renderJourney(); renderKpis();
+  }
+  catch (e) { p.stop(); toast(e.message, 8000); } finally { $('btnVerify').disabled = false; $('verify').classList.remove('busy'); $('verifyBusy').innerHTML = ''; }
 };
 $('btnTrack').onclick = async () => {
   if (!confirmInline('btnTrack')) return;
   try { await call('/api/track', {}); toast('Tracking added to PayPal'); refresh(); } catch (e) { toast(e.message, 8000); }
 };
-function confirmInline(id) { const b = $(id); if (b.dataset.armed) { delete b.dataset.armed; return true; } b.dataset.armed = 1; b.textContent = 'Click again to confirm'; setTimeout(() => { delete b.dataset.armed; b.textContent = b.id === 'btnTrack' ? 'Approve & add tracking' : 'Approve & submit evidence'; }, 4000); return false; }
+function confirmInline(id) {
+  const b = $(id);
+  if (b.dataset.armed) { delete b.dataset.armed; clearTimeout(b._t); b.innerHTML = b.dataset.label; return true; }
+  b.dataset.armed = 1; b.dataset.label = b.innerHTML; b.textContent = 'Click again to confirm';
+  b._t = setTimeout(() => { delete b.dataset.armed; b.innerHTML = b.dataset.label; }, 4000);
+  return false;
+}
 async function openDispute(id) {
   const { dispute: d, actions } = await call('/api/dispute', { id });
+  DETAIL = d;
+  const tx = d.disputed_transactions?.[0] || {};
+  const evs = [];
+  evs.push({ c: 'buyer', i: 'user', t: 'Buyer opened a claim', w: d.create_time, d: (d.evidences || []).filter((e) => e.source === 'SUBMITTED_BY_BUYER').map((e) => `“${e.notes}”`).join(' ') || human(d.reason) });
+  (d.fund_movements || []).forEach((f) => evs.push({ c: 'hold', i: 'lock', t: `${human(f.reason)}: $${f.amount?.value || ''}`, w: f.initiated_time, d: `${f.party} ${String(f.type || '').toLowerCase()}` }));
+  (d.supporting_info || []).filter((s) => s.source === 'SUBMITTED_BY_SELLER').forEach((s) => evs.push({ c: 'seller', i: 'check', t: 'Your evidence is on file', w: s.provided_time, d: `${(s.documents || []).map((x) => x.name).join(', ') || 'Statement'} · ${String(s.notes || '').slice(0, 110)}${String(s.notes || '').length > 110 ? '…' : ''}` }));
+  evs.push(d.dispute_outcome
+    ? { c: 'seller', i: 'scale', t: `Outcome: ${human(d.dispute_outcome.outcome_code)}`, w: d.update_time, d: 'Decided by PayPal' }
+    : { c: 'now', i: 'scale', t: human(d.status), w: d.update_time, d: 'PayPal decides. Unhold never promises an outcome.' });
   $('disputeDetail').innerHTML = `
-    <div class="box" style="margin-top:10px"><b>${h(d.dispute_id)}</b> · ${h(d.reason)} · <b>${h(d.status)}</b> · stage ${h(d.dispute_life_cycle_stage)}
-      <div class="mute">Seller response due: ${h(d.seller_response_due_date || '—')} · Allowed actions from PayPal: ${h(actions.join(', ') || '—')}</div>
-      ${d.dispute_outcome ? `<div class="ok">Outcome: ${h(d.dispute_outcome.outcome_code)}</div>` : ''}</div>
-    <div class="row" style="margin-top:10px">
-      <button class="ghost" onclick="act('escalate','${h(id)}')">Escalate to PayPal review</button>
-      <button class="ghost" onclick="act('require-evidence','${h(id)}')">[sandbox] Move to “waiting for seller evidence”</button>
-      <button id="btnEv" onclick="submitEvidence('${h(id)}')">Approve & submit evidence</button>
-      <a href="/evidence.pdf" target="_blank">View evidence PDF</a>
-      <button class="ghost" onclick="act('adjudicate','${h(id)}')">[sandbox] Adjudicate</button>
+    <div class="case" id="caseCard">
+      <div class="head">
+        <div><div class="t">${h(human(d.reason))}</div><div class="sub"><span class="id">${h(d.dispute_id)}</span> · stage ${h(d.dispute_life_cycle_stage)}</div></div>
+        <span class="pill">${h(d.status)}</span>
+        <div class="amt">$${h(d.dispute_amount?.value)}</div>
+      </div>
+      <div class="tl">${evs.map((e) => `<div class="ev ${h(e.c)}"><span class="dot">${ic(e.i)}</span><b>${h(e.t)}</b><span class="when">${h(fmt(e.w))}</span><div class="d">${h(e.d)}</div></div>`).join('')}</div>
+      <div class="side">
+        <div class="kv">
+          <span class="k">Seller Protection</span><span class="v">${tx.seller_protection_eligible ? 'Eligible' : '—'}${tx.seller_protection_type ? ` · ${h(human(tx.seller_protection_type))}` : ''}</span>
+          <span class="k">Response due</span><span class="v">${h(d.seller_response_due_date ? fmt(d.seller_response_due_date) : '—')}</span>
+          <span class="k">PayPal allows</span><span class="v">${h(actions.filter((x) => x !== 'self').join(', ') || '—')}</span>
+          ${d.dispute_outcome ? `<span class="k">Outcome</span><span class="v ok">${h(d.dispute_outcome.outcome_code)}</span>` : ''}
+        </div>
+        <div class="acts">
+          <button id="btnEv" data-id="${h(id)}">${ic('send')}Approve &amp; submit evidence</button>
+          <a class="btn ghost" href="/evidence.pdf" target="_blank">${ic('doc')}View evidence PDF</a>
+        </div>
+        <details class="sbx">
+          <summary>${ic('chev')}Sandbox tools</summary>
+          <div class="acts">
+            <button class="ghost small" data-act="escalate" data-id="${h(id)}">Escalate to PayPal review</button>
+            <button class="ghost small" data-act="require-evidence" data-id="${h(id)}">Move to “waiting for seller evidence”</button>
+            <button class="ghost small" data-act="adjudicate" data-id="${h(id)}">Adjudicate</button>
+          </div>
+        </details>
+      </div>
     </div>`;
+  renderJourney();
 }
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-open]');
+  if (open) return openDispute(open.dataset.open).catch((err) => toast(err.message, 8000));
+  const a = e.target.closest('button[data-act]');
+  if (a) return act(a.dataset.act, a.dataset.id);
+  const ev = e.target.closest('#btnEv');
+  if (ev) return submitEvidence(ev.dataset.id);
+});
 async function act(kind, id) { try { await call('/api/dispute/' + kind, { id }); toast(kind + ' done'); setTimeout(() => openDispute(id), 1200); refresh(); } catch (e) { toast(e.message, 9000); } }
 async function submitEvidence(id) {
   if (!confirmInline('btnEv')) return;
   try { await call('/api/dispute/evidence', { id }); toast('Evidence submitted to PayPal'); setTimeout(() => openDispute(id), 1500); } catch (e) { toast(e.message, 9000); }
 }
-refresh().catch((e) => $('pay').textContent = e.message);
+refresh().catch((e) => { $('pay').textContent = e.message; });
 </script>
 </body>
 </html>
