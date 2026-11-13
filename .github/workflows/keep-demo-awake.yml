@@ -1,9 +1,9 @@
 # Keeps the hosted judge demo (Render free plan) from sleeping after 15 idle minutes.
-# GitHub's scheduler can run late under load, so ping every 5 minutes to stay well inside the window.
+# Pings every 10 minutes; if GitHub's scheduler runs late and the instance still sleeps, lower this to */5.
 name: keep-demo-awake
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 permissions: {}
 jobs:
