@@ -2,11 +2,11 @@
 
 ![Unhold dashboard](docs/screenshot.png)
 
-**Unhold** is a get-paid copilot for small cross-border sellers (e.g. a Shenzhen Shopify seller shipping to the US) who take payments with PayPal.
+**Unhold** is a get-paid copilot for small cross-border sellers (e.g. a two-person Shopify shop shipping to US buyers) who take payments with PayPal.
 
-When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own (often Chinese) documents — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in English and Chinese with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
+When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own documents (often not in English) — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in plain English (plus the seller's language) with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
 
-1. **Explain the hold** — status from PayPal Orders/Payments/Balances APIs + the policy that applies (HK/CN accounts: holds up to 30 days; released ~24h after a supported carrier confirms delivery).
+1. **Explain the hold** — status from PayPal Orders/Payments/Balances APIs + the policy that applies (e.g. risk holds of up to 30 days for some seller regions; released ~24h after a supported carrier confirms delivery).
 2. **Verify fulfillment** — amount, quantity, SKU, weight, timeline, route, tracking strength and Seller Protection eligibility, each traced back to a source document.
 3. **Push tracking** — `POST /v2/checkout/orders/{id}/track` with the correct PayPal carrier code (e.g. `YUNEXPRESS`). Blocked if any check fails (e.g. an untracked economy parcel that can never show "delivered").
 4. **Answer disputes with the same evidence** — reads the actions PayPal currently allows (HATEOAS links), builds a hashed, source-cited evidence PDF and submits it via the Disputes API (`provide-evidence`, or `provide-supporting-info` while PayPal is reviewing a claim).
@@ -15,9 +15,9 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 ## Why this problem
 
 - "Trouble accessing funds in your mobile or digital wallet" is the #1 non-fraud PayPal issue in the US CFPB complaint database: 1,259 complaints in 2025 and 1,980 in 2026 through Nov 13 (~17% of PayPal complaints).
-- PayPal's HK/CN User Agreement: *"Risk-based holds generally remain in place for up to 30 days"*; releasing earlier depends on uploaded tracking and confirmed delivery.
+- PayPal's User Agreement (Hong Kong / China seller accounts): *"Risk-based holds generally remain in place for up to 30 days"*; releasing earlier depends on uploaded tracking and confirmed delivery.
 - Seller Protection requires online tracking showing "delivered" to the transaction address, and does **not** cover Guest Checkout / card payments when the seller is registered in China, Hong Kong or Singapore.
-- Small sellers already hold the facts (orders, purchase records, waybills, tracking) — but in Chinese, scattered across tools, and they surface only after a dispute starts, inside a 10-day response window.
+- Small sellers already hold the facts (orders, purchase records, waybills, tracking) — but often not in English, scattered across tools, and they surface only after a dispute starts, inside a 10-day response window.
 
 ![How it works](docs/how-it-works.png)
 
@@ -29,7 +29,7 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 | PayPal **Payments / Balances / Transaction Search** | read capture status, `status_details`, withheld balance for hold diagnosis |
 | PayPal **Disputes v1** | list/get disputes, read allowed actions (HATEOAS), **provide-evidence** / **provide-supporting-info** (multipart PDF), escalate, sandbox `require-evidence` / `adjudicate` |
 | PayPal **sandbox** | everything runs against `api-m.sandbox.paypal.com` |
-| **Qwen (Alibaba Cloud Model Studio / Bailian)**, `qwen3.8-flash` via the OpenAI-compatible endpoint | (1) extracts structured fields from Chinese supplier documents; (2) explains each check and the hold in English + Chinese; (3) drafts English evidence statements with source citations |
+| **Qwen (Alibaba Cloud Model Studio / Bailian)**, `qwen3.8-flash` via the OpenAI-compatible endpoint | (1) extracts structured fields from supplier documents in other languages (the demo PO is in Chinese); (2) explains each check and the hold in English, with an optional second language; (3) drafts English evidence statements with source citations |
 
 **Guardrails (compliance by design)**
 
@@ -93,7 +93,7 @@ Open the `APPROVE_URL`, log in with the **sandbox Personal (buyer)** account and
 Open **http://localhost:3000** (use `localhost` or `127.0.0.1`; other host names are rejected on purpose).
 
 1. The top card shows the live PayPal order / capture status and the hold rule that applies.
-2. Click **Run verification** (~20 s; Qwen reads the Chinese supplier PO and explains each check). Expect 8 check cards: amount, quantity, SKU, weight (*explained* — packaging), timeline, route, tracking strength, Seller Protection — plus the **grounding guard** panel showing every evidence sentence with its sources.
+2. Click **Run verification** (~20 s; Qwen reads the non-English supplier PO and explains each check). Expect 8 check cards: amount, quantity, SKU, weight (*explained* — packaging), timeline, route, tracking strength, Seller Protection — plus the **grounding guard** panel showing every evidence sentence with its sources.
 3. Tick **Contrast case: untracked economy parcel** and run again: *tracking strength* fails and tracking push is **blocked**. Untick and run again to continue.
 
 ### 4. Push tracking to PayPal (real write)
