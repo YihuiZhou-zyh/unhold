@@ -40,16 +40,34 @@ function sessionOf(req) {
   try { const now = new Date(); utimesSync(dir, now, now); } catch {} // last access, used for idle eviction
   return workspace(sid);
 }
-function newSession() {
-  // At capacity, only workspaces idle for more than a day are evicted; active ones are never deleted.
-  const dirs = readdirSync(root('out/sessions')).filter((d) => SID_RE.test(d));
-  if (dirs.length >= MAX_SESSIONS) {
-    const idle = dirs.map((d) => [d, statSync(root(`out/sessions/${d}`)).mtimeMs]).filter(([, t]) => Date.now() - t > DAY).sort((a, b) => a[1] - b[1]);
-    if (!idle.length) { const e = new Error('The demo is at capacity, please try again later'); e.status = 429; throw e; }
-    rmSync(root(`out/sessions/${idle[0][0]}`), { recursive: true, force: true });
+// Session capacity policy (only holders of the access code can create sessions at all):
+// - one source (IP) holds at most PER_SOURCE live workspaces; beyond that its own oldest one is replaced,
+//   so a single source can never push out anyone else's workspace;
+// - at global capacity, evict workspaces idle > 24 h, then the least recently used one idle > 30 min;
+//   only if every workspace is in active use is the new visitor refused. No global counter to drain.
+const PER_SOURCE = 5;
+const sourceTag = (ip) => createHash('sha256').update(String(ip)).digest('hex').slice(0, 16);
+function listSessions() {
+  return readdirSync(root('out/sessions')).filter((d) => SID_RE.test(d)).map((sid) => {
+    const dir = root(`out/sessions/${sid}`);
+    let owner = ''; try { owner = readFileSync(root(`out/sessions/${sid}/owner`), 'utf8'); } catch {}
+    return { sid, owner, used: statSync(dir).mtimeMs };
+  });
+}
+const evict = (sid) => rmSync(root(`out/sessions/${sid}`), { recursive: true, force: true });
+function newSession(ip) {
+  const tag = sourceTag(ip);
+  let all = listSessions();
+  const mine = all.filter((x) => x.owner === tag).sort((a, b) => a.used - b.used);
+  if (mine.length >= PER_SOURCE) { evict(mine[0].sid); all = all.filter((x) => x.sid !== mine[0].sid); }
+  if (all.length >= MAX_SESSIONS) {
+    const now = Date.now(), lru = all.sort((a, b) => a.used - b.used)[0];
+    if (now - lru.used <= 30 * 60e3) { const e = new Error('The demo is at capacity, please try again later'); e.status = 429; throw e; }
+    evict(lru.sid); // oldest first, so anything idle > 24 h goes before anything idle > 30 min
   }
   const sid = randomBytes(16).toString('hex');
   mkdirSync(root(`out/sessions/${sid}`));
+  writeFileSync(root(`out/sessions/${sid}/owner`), tag);
   return sid;
 }
 const digest = (s) => createHash('sha256').update(String(s)).digest();
@@ -340,7 +358,12 @@ http.createServer(async (req, res) => {
       if (!codeMatches(code)) { recentHits('login-fail:all', LOGIN_WINDOW).push(stamp); return redirect(res, '/login?e=1'); }
       const mine = hits.get(failKey) || []; const k = mine.indexOf(stamp); if (k >= 0) mine.splice(k, 1);
       let sid = sessionOf(req)?.sid;
-      if (!sid) { limit(`session-new:${ip}`, 10, HOUR); limit('session-new:all', 150, HOUR); sid = newSession(); }
+      if (!sid) {
+        const created = recentHits(`session-new:${ip}`, HOUR);
+        if (created.length >= 10) return send(res, 429, 'text/plain', 'Too many new sessions from your network, try again later');
+        sid = newSession(ip);
+        created.push(Date.now()); // count only sessions that were actually created
+      }
       const secure = PUBLIC_URL.startsWith('https://') ? '; Secure' : '';
       return redirect(res, '/', { 'Set-Cookie': `uh_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}` });
     }
