@@ -371,7 +371,8 @@ http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/login') {
       if (!HOSTED) return redirect(res, '/');
-      if (req.method === 'GET') return send(res, 200, 'text/html; charset=utf-8', loginPage(url.searchParams.has('e') ? 'Wrong access code.' : ''));
+      // HEAD is answered like GET (uptime monitors use HEAD); Node omits the body for HEAD automatically.
+      if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, 'text/html; charset=utf-8', loginPage(url.searchParams.has('e') ? 'Wrong access code.' : ''));
       if (req.method !== 'POST' || (req.headers.origin && !ORIGINS.includes(req.headers.origin))) return send(res, 403, 'text/plain', 'forbidden');
       // Brute force is bounded by a per-IP limit plus the 12+ character code. The attempt is recorded synchronously
       // (before any await) so parallel requests cannot race past the limit; it is withdrawn if the code is right.
