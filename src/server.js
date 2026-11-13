@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, readdirSync, statSync, rmSync, utimesSync } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import * as pp from './paypal.js';
 import { runChecks, loadDoc } from './verify.js';
@@ -35,15 +35,18 @@ const cookies = (req) => Object.fromEntries(String(req.headers.cookie || '').spl
 function sessionOf(req) {
   if (!HOSTED) return workspace('local');
   const sid = cookies(req).uh_sid;
-  return sid && SID_RE.test(sid) && existsSync(root(`out/sessions/${sid}`)) ? workspace(sid) : null;
+  const dir = sid && SID_RE.test(sid) && root(`out/sessions/${sid}`);
+  if (!dir || !existsSync(dir)) return null;
+  try { const now = new Date(); utimesSync(dir, now, now); } catch {} // last access, used for idle eviction
+  return workspace(sid);
 }
 function newSession() {
-  // At capacity, evict the least recently used workspace instead of refusing new visitors.
+  // At capacity, only workspaces idle for more than a day are evicted; active ones are never deleted.
   const dirs = readdirSync(root('out/sessions')).filter((d) => SID_RE.test(d));
   if (dirs.length >= MAX_SESSIONS) {
-    const used = (d) => { const f = root(`out/sessions/${d}/state.json`); return statSync(existsSync(f) ? f : root(`out/sessions/${d}`)).mtimeMs; };
-    const oldest = dirs.sort((a, b) => used(a) - used(b))[0];
-    rmSync(root(`out/sessions/${oldest}`), { recursive: true, force: true });
+    const idle = dirs.map((d) => [d, statSync(root(`out/sessions/${d}`)).mtimeMs]).filter(([, t]) => Date.now() - t > DAY).sort((a, b) => a[1] - b[1]);
+    if (!idle.length) { const e = new Error('The demo is at capacity, please try again later'); e.status = 429; throw e; }
+    rmSync(root(`out/sessions/${idle[0][0]}`), { recursive: true, force: true });
   }
   const sid = randomBytes(16).toString('hex');
   mkdirSync(root(`out/sessions/${sid}`));
@@ -337,7 +340,7 @@ http.createServer(async (req, res) => {
       if (!codeMatches(code)) { recentHits('login-fail:all', LOGIN_WINDOW).push(stamp); return redirect(res, '/login?e=1'); }
       const mine = hits.get(failKey) || []; const k = mine.indexOf(stamp); if (k >= 0) mine.splice(k, 1);
       let sid = sessionOf(req)?.sid;
-      if (!sid) { limit(`session-new:${ip}`, 10, HOUR); sid = newSession(); }
+      if (!sid) { limit(`session-new:${ip}`, 10, HOUR); limit('session-new:all', 150, HOUR); sid = newSession(); }
       const secure = PUBLIC_URL.startsWith('https://') ? '; Secure' : '';
       return redirect(res, '/', { 'Set-Cookie': `uh_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}` });
     }
