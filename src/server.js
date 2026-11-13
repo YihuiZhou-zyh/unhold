@@ -312,10 +312,13 @@ http.createServer(async (req, res) => {
       if (!HOSTED) return redirect(res, '/');
       if (req.method === 'GET') return send(res, 200, 'text/html; charset=utf-8', loginPage(url.searchParams.has('e') ? 'Wrong access code.' : ''));
       if (req.method !== 'POST' || (req.headers.origin && !ORIGINS.includes(req.headers.origin))) return send(res, 403, 'text/plain', 'forbidden');
-      limit(`login:${clientIp(req)}`, 10, 15 * 60e3);
-      limit('login:all', 100, 15 * 60e3); // global cap that does not depend on any client-supplied header
+      // Brute force is bounded by the per-IP failure limit plus the 12+ character code. Only failures count,
+      // and there is deliberately no global bucket, so nobody can lock judges out by spamming wrong codes.
+      const failKey = `login-fail:${clientIp(req)}`;
+      const fails = (hits.get(failKey) || []).filter((t) => Date.now() - t < 15 * 60e3);
+      if (fails.length >= 10) return send(res, 429, 'text/plain', 'Too many wrong codes, try again in 15 minutes');
       const code = new URLSearchParams(await readBody(req, 2000)).get('code') || '';
-      if (!codeMatches(code)) return redirect(res, '/login?e=1');
+      if (!codeMatches(code)) { hits.set(failKey, [...fails, Date.now()]); return redirect(res, '/login?e=1'); }
       const sid = sessionOf(req)?.sid || newSession();
       const secure = PUBLIC_URL.startsWith('https://') ? '; Secure' : '';
       return redirect(res, '/', { 'Set-Cookie': `uh_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}` });
