@@ -2,6 +2,8 @@
 
 ![Unhold dashboard](docs/screenshot.png)
 
+> **Live demo:** https://unhold-do43.onrender.com — runs on the PayPal sandbox with real API calls; each visitor gets a private workspace. Enter the access code from the Devpost testing instructions, then follow the 6-step guide on the page (create a test order → pay as the sandbox buyer → verify → push tracking → open a dispute as the buyer → submit evidence). The free instance sleeps when idle, so the first load can take ~30–50 s. To run it yourself instead, see [Run it](#run-it-judges-10-minutes).
+
 **Unhold** is a get-paid copilot for small cross-border sellers (e.g. a two-person Shopify shop shipping to US buyers) who take payments with PayPal.
 
 When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own documents (often not in English) — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in plain English (plus the seller's language) with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
