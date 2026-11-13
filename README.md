@@ -129,10 +129,12 @@ Verified end-to-end in sandbox on 2026-11-12: order captured → tracking `YUNEX
 
 The same server runs as a shared, judge-friendly demo when `PUBLIC_URL` (or Render's `RENDER_EXTERNAL_URL`) and `DEMO_ACCESS_CODE` are set:
 
-- **Access code** page in front of everything; the API keys stay on the server.
+- **Access code** page in front of everything (`DEMO_ACCESS_CODE`, at least 12 characters; the server refuses to start otherwise). API keys never leave the server. Wrong codes are limited per client IP (10 per 15 min, recorded before any async work so parallel requests can't race past it); `X-Forwarded-For` is trusted only behind Render (`RENDER`) or with `TRUST_PROXY=1`.
 - **Private workspace per visitor** (cookie session): own order, analysis, tracking, evidence PDF and audit log. Dispute lists are filtered to the visitor's own payment (`disputed_transaction_id`), and dispute actions are refused for any other case.
 - **Create test order** button in the UI (no CLI), with the sandbox buyer login shown to logged-in visitors (`SANDBOX_BUYER_EMAIL` / `SANDBOX_BUYER_PASSWORD`, sandbox-only test credentials).
 - **Rate limits** per visitor and per day on order creation, Qwen analysis and Q&A.
+- **Session capacity**: up to 500 workspaces; one source IP keeps at most 5 (its own oldest is replaced) and creates at most 10 per hour. At capacity, workspaces idle > 24 h are evicted first, then the least recently used one idle > 30 min; active workspaces are never evicted.
+- `/healthz` for the platform health check; local mode (no `PUBLIC_URL`) is unchanged.
 
 Deploy: Render Dashboard → **New → Blueprint** → this repo (uses `render.yaml`) → fill `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DASHSCOPE_API_KEY`, `DEMO_ACCESS_CODE`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`. The free plan sleeps when idle, so the first request can take ~30–50 s.
 
@@ -143,7 +145,7 @@ src/paypal.js   PayPal REST client (Orders, Payments, Balances, Transactions, Di
 src/verify.js   deterministic cross-checks + SHA-256 of source documents
 src/ai.js       Qwen calls (extraction, explanation, evidence drafting) + grounding guard
 src/pdf.js      dependency-free evidence PDF writer
-src/server.js   local web app + API, approval gates, audit log
+src/server.js   web app + API, approval gates, audit log; hosted mode (access code, per-visitor workspaces, rate limits)
 public/         single-page UI
 data/           mock shop order and seller documents
 ```
