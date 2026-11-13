@@ -133,7 +133,7 @@ The same server runs as a shared, judge-friendly demo when `PUBLIC_URL` (or Rend
 - **Private workspace per visitor** (cookie session): own order, analysis, tracking, evidence PDF and audit log. Dispute lists are filtered to the visitor's own payment (`disputed_transaction_id`), and dispute actions are refused for any other case.
 - **Create test order** button in the UI (no CLI), with the sandbox buyer login shown to logged-in visitors (`SANDBOX_BUYER_EMAIL` / `SANDBOX_BUYER_PASSWORD`, sandbox-only test credentials).
 - **Rate limits** per visitor and per day on order creation, Qwen analysis and Q&A.
-- **Session capacity**: up to 500 workspaces; one source IP keeps at most 5 (its own oldest is replaced) and creates at most 10 per hour. At capacity, workspaces idle > 24 h are evicted first, then the least recently used one idle > 30 min; active workspaces are never evicted.
+- **Session capacity**: up to 500 workspaces; one source (IP, or IPv6 /64) keeps at most 5 (its own oldest is replaced only if idle > 30 min) and creates at most 10 per hour. At capacity, workspaces idle > 24 h are evicted first, then the least recently used one idle > 30 min; active workspaces are never evicted.
 - `/healthz` for the platform health check; local mode (no `PUBLIC_URL`) is unchanged.
 
 Deploy: Render Dashboard → **New → Blueprint** → this repo (uses `render.yaml`) → fill `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DASHSCOPE_API_KEY`, `DEMO_ACCESS_CODE`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`. The free plan sleeps when idle, so the first request can take ~30–50 s.

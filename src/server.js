@@ -41,8 +41,8 @@ function sessionOf(req) {
   return workspace(sid);
 }
 // Session capacity policy (only holders of the access code can create sessions at all):
-// - one source (IP) holds at most PER_SOURCE live workspaces; beyond that its own oldest one is replaced,
-//   so a single source can never push out anyone else's workspace;
+// - one source (IP, IPv6 /64) holds at most PER_SOURCE workspaces; beyond that its own oldest one is replaced
+//   only if idle > 30 min, otherwise the new login is refused — an active workspace is never deleted;
 // - at global capacity, evict workspaces idle > 24 h, then the least recently used one idle > 30 min;
 //   only if every workspace is in active use is the new visitor refused. No global counter to drain.
 const PER_SOURCE = 5;
@@ -59,7 +59,11 @@ function newSession(ip) {
   const tag = sourceTag(ip);
   let all = listSessions();
   const mine = all.filter((x) => x.owner === tag).sort((a, b) => a.used - b.used);
-  if (mine.length >= PER_SOURCE) { evict(mine[0].sid); all = all.filter((x) => x.sid !== mine[0].sid); }
+  if (mine.length >= PER_SOURCE) {
+    // Several judges can share one office IP: only replace this source's oldest workspace if it is idle.
+    if (Date.now() - mine[0].used <= 30 * 60e3) { const e = new Error('Too many active demo sessions from your network, please try again later'); e.status = 429; throw e; }
+    evict(mine[0].sid); all = all.filter((x) => x.sid !== mine[0].sid);
+  }
   if (all.length >= MAX_SESSIONS) {
     const now = Date.now(), lru = all.sort((a, b) => a.used - b.used)[0];
     if (now - lru.used <= 30 * 60e3) { const e = new Error('The demo is at capacity, please try again later'); e.status = 429; throw e; }
@@ -312,7 +316,9 @@ async function readBody(req, max = 20_000) {
 // Trust X-Forwarded-For only behind a known proxy (Render sets RENDER=true), and then only the entry the proxy
 // appended (rightmost); the leftmost entries are client-controlled.
 const TRUST_PROXY = Boolean(process.env.RENDER || process.env.TRUST_PROXY);
-const clientIp = (req) => (TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop()) || req.socket.remoteAddress;
+const rawIp = (req) => (TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop()) || req.socket.remoteAddress || '';
+// Group IPv6 clients by /64 (one subscriber usually owns a whole /64), so rotating addresses doesn't evade limits.
+const clientIp = (req) => { const ip = rawIp(req).replace(/^::ffff:/, ''); return ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const LOGIN_WINDOW = 15 * 60e3;
 const recentHits = (key, windowMs) => { const now = Date.now(); const arr = (hits.get(key) || []).filter((t) => now - t < windowMs); hits.set(key, arr); return arr; };
