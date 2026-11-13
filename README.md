@@ -2,11 +2,11 @@
 
 ![Unhold dashboard](docs/screenshot.png)
 
-**Unhold** is a get-paid copilot for small cross-border sellers (e.g. a Shenzhen Shopify seller shipping to the US) who take payments with PayPal.
+**Unhold** is a get-paid copilot for small cross-border sellers (e.g. a two-person Shopify shop shipping to US buyers) who take payments with PayPal.
 
-When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own (often Chinese) documents — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in English and Chinese with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
+When PayPal holds a payment, the seller usually doesn't know *why*, *when* it will be released, or *what exactly* to do. Unhold reads the PayPal transaction, reads the seller's own documents (often not in English) — shop order, supplier purchase order, forwarder waybill, tracking feed — cross-checks them with deterministic code, explains the result in plain English (plus the seller's language) with an LLM, and then, **only after the seller approves**, executes the next step PayPal's own rules ask for:
 
-1. **Explain the hold** — status from PayPal Orders/Payments/Balances APIs + the policy that applies (HK/CN accounts: holds up to 30 days; released ~24h after a supported carrier confirms delivery).
+1. **Explain the hold** — status from PayPal Orders/Payments/Balances APIs + the policy that applies (e.g. risk holds of up to 30 days for some seller regions; released ~24h after a supported carrier confirms delivery).
 2. **Verify fulfillment** — amount, quantity, SKU, weight, timeline, route, tracking strength and Seller Protection eligibility, each traced back to a source document.
 3. **Push tracking** — `POST /v2/checkout/orders/{id}/track` with the correct PayPal carrier code (e.g. `YUNEXPRESS`). Blocked if any check fails (e.g. an untracked economy parcel that can never show "delivered").
 4. **Answer disputes with the same evidence** — reads the actions PayPal currently allows (HATEOAS links), builds a hashed, source-cited evidence PDF and submits it via the Disputes API (`provide-evidence`, or `provide-supporting-info` while PayPal is reviewing a claim).
@@ -15,9 +15,9 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 ## Why this problem
 
 - "Trouble accessing funds in your mobile or digital wallet" is the #1 non-fraud PayPal issue in the US CFPB complaint database: 1,259 complaints in 2025 and 1,980 in 2026 through Nov 13 (~17% of PayPal complaints).
-- PayPal's HK/CN User Agreement: *"Risk-based holds generally remain in place for up to 30 days"*; releasing earlier depends on uploaded tracking and confirmed delivery.
+- PayPal's User Agreement (Hong Kong / China seller accounts): *"Risk-based holds generally remain in place for up to 30 days"*; releasing earlier depends on uploaded tracking and confirmed delivery.
 - Seller Protection requires online tracking showing "delivered" to the transaction address, and does **not** cover Guest Checkout / card payments when the seller is registered in China, Hong Kong or Singapore.
-- Small sellers already hold the facts (orders, purchase records, waybills, tracking) — but in Chinese, scattered across tools, and they surface only after a dispute starts, inside a 10-day response window.
+- Small sellers already hold the facts (orders, purchase records, waybills, tracking) — but often not in English, scattered across tools, and they surface only after a dispute starts, inside a 10-day response window.
 
 ![How it works](docs/how-it-works.png)
 
@@ -29,7 +29,7 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 | PayPal **Payments / Balances / Transaction Search** | read capture status, `status_details`, withheld balance for hold diagnosis |
 | PayPal **Disputes v1** | list/get disputes, read allowed actions (HATEOAS), **provide-evidence** / **provide-supporting-info** (multipart PDF), escalate, sandbox `require-evidence` / `adjudicate` |
 | PayPal **sandbox** | everything runs against `api-m.sandbox.paypal.com` |
-| **Qwen (Alibaba Cloud Model Studio / Bailian)**, `qwen3.8-flash` via the OpenAI-compatible endpoint | (1) extracts structured fields from Chinese supplier documents; (2) explains each check and the hold in English + Chinese; (3) drafts English evidence statements with source citations |
+| **Qwen (Alibaba Cloud Model Studio / Bailian)**, `qwen3.8-flash` via the OpenAI-compatible endpoint | (1) extracts structured fields from supplier documents in other languages (the demo PO is in Chinese); (2) explains each check and the hold in English, with an optional second language; (3) drafts English evidence statements with source citations |
 
 **Guardrails (compliance by design)**
 
@@ -40,26 +40,90 @@ When PayPal holds a payment, the seller usually doesn't know *why*, *when* it wi
 - Only official REST APIs — no automation of PayPal web pages.
 - Unhold never claims to release funds; PayPal decides. It does what PayPal's rules say unlocks funds.
 
-## Run it
+## Run it (judges: ~10 minutes)
 
-Requirements: Node.js ≥ 20.6, a PayPal Developer sandbox app, a DashScope (Bailian) API key.
+Everything runs locally against the **PayPal sandbox** — no PayPal calls are mocked. Only the seller's own documents in `data/docs/` (supplier PO, forwarder waybill, tracking feed) are mock data, clearly labelled.
+
+### 0. Prerequisites
+
+| You need | Where to get it |
+|---|---|
+| **Node.js ≥ 22.9** (tested on 25) | https://nodejs.org — no npm dependencies; `npm install` downloads nothing |
+| **PayPal sandbox app** (Client ID + Secret) | [developer.paypal.com](https://developer.paypal.com/dashboard/applications/sandbox) → *Apps & Credentials* → **Sandbox** → *Create App* (type: Merchant). Copy Client ID and Secret. |
+| **Sandbox buyer account** (to pay and open a dispute) | Developer Dashboard → *Testing Tools* → **Sandbox Accounts**. Use the default *Personal* account, or *Create account* → Personal, **country: United States** (some regions can't send payments in sandbox). Click the account → *View/Edit* to see its email and password. |
+| **Qwen API key** (Alibaba Cloud Model Studio / DashScope) | [Model Studio console](https://bailian.console.aliyun.com/) (China region) or [international console](https://modelstudio.console.alibabacloud.com/) → *API Keys*. |
+
+### 1. Install and configure
 
 ```bash
-git clone <this repo> && cd unhold
+git clone https://github.com/YihuiZhou-zyh/unhold.git && cd unhold
 npm install
-cp .env.example .env      # fill PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, DASHSCOPE_API_KEY
-npm run create-order      # prints an approval URL
-npm start                 # http://localhost:3000
+cp .env.example .env
 ```
 
-1. Open the approval URL, log in with a **sandbox Personal (buyer) account** and pay. You are redirected to `localhost:3000/return`, which captures the payment.
-2. Click **Run verification** (tick "untracked economy parcel" to see a blocked case).
-3. Click **Approve & add tracking** (click twice to confirm).
-4. As the sandbox buyer, open an *Item not received* dispute on the payment in the sandbox Resolution Center (sandbox.paypal.com). Wait a few minutes, then in Unhold: **Open** the dispute → **Approve & submit evidence** (Unhold picks `provide-evidence` or `provide-supporting-info` depending on what PayPal allows). Optional sandbox helpers: *Move to waiting for seller evidence*, *Adjudicate* (only accepted in certain dispute states).
+Edit `.env`:
 
-Verified end-to-end in sandbox on 2026-11-12: order captured → tracking `YUNEXPRESS` added (visible on the buyer's case page) → buyer opened an Item-not-received claim → evidence PDF submitted and on file while PayPal reviews.
+```bash
+PAYPAL_CLIENT_ID=...            # sandbox app
+PAYPAL_CLIENT_SECRET=...
+PAYPAL_ENVIRONMENT=SANDBOX
+DASHSCOPE_API_KEY=sk-...
+# International (Singapore) Model Studio account? Also set:
+# DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+# If qwen3.8-flash isn't enabled for your account, use any Qwen chat model you have, e.g.:
+# QWEN_MODEL=qwen-plus
+```
 
-Seller documents in `data/docs/` are **mock data** (clearly labelled); all PayPal data is real sandbox data.
+### 2. Create a sandbox order and pay it
+
+```bash
+npm run create-order
+# ORDER 8YT75534VX564554M PAYER_ACTION_REQUIRED
+# APPROVE_URL https://www.sandbox.paypal.com/checkoutnow?token=8YT75534VX564554M
+npm start
+# Unhold running on http://localhost:3000
+```
+
+Open the `APPROVE_URL`, log in with the **sandbox Personal (buyer)** account and click *Pay*. PayPal redirects to `http://localhost:3000/return`, which captures the payment. (If the redirect doesn't load, open http://localhost:3000 and click **Capture payment**.)
+
+> You can already click **Run verification** before paying — the checks read the order; only *add tracking* and disputes need a captured payment.
+
+### 3. Explain the hold and verify the shipment
+
+Open **http://localhost:3000** (use `localhost` or `127.0.0.1`; other host names are rejected on purpose).
+
+1. The top card shows the live PayPal order / capture status and the hold rule that applies.
+2. Click **Run verification** (~20 s; Qwen reads the non-English supplier PO and explains each check). Expect 8 check cards: amount, quantity, SKU, weight (*explained* — packaging), timeline, route, tracking strength, Seller Protection — plus the **grounding guard** panel showing every evidence sentence with its sources.
+3. Tick **Contrast case: untracked economy parcel** and run again: *tracking strength* fails and tracking push is **blocked**. Untick and run again to continue.
+
+### 4. Push tracking to PayPal (real write)
+
+Click **Approve & add tracking**, then **Click again to confirm**. Unhold calls `POST /v2/checkout/orders/{id}/track` with carrier `YUNEXPRESS`. You can see the tracking number on the buyer side in sandbox (buyer's *Activity* → the payment). Every write is logged in `out/audit.log.jsonl`.
+
+### 5. Open a dispute as the buyer and answer it (real write)
+
+1. Log in to **https://www.sandbox.paypal.com** as the sandbox buyer → *Activity* → the $68 payment → **Report a problem** → *I didn't receive an item I bought* (Item not received) → submit.
+2. Wait 1–5 minutes (sandbox disputes take a moment to appear in the API), then reload Unhold. The case appears in section **4 · Answer a dispute with the same evidence** → click **Open case**.
+3. Click **Approve & submit evidence** → **Click again to confirm**. Unhold reads which actions PayPal currently allows for the case (HATEOAS links) and submits the hashed evidence PDF via `provide-evidence` or `provide-supporting-info`. Open http://localhost:3000/evidence.pdf to see exactly what was sent.
+4. Optional sandbox helpers on the case card: *Escalate to PayPal review*, *Move to "waiting for seller evidence"*, *Adjudicate*. PayPal only accepts each of these in certain dispute states; if it refuses, Unhold shows PayPal's error (e.g. `ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`).
+
+### 6. Ask about the case
+
+Click the **Ask Unhold** button (bottom right) and try *"Why is my money held?"*, *"Am I covered by Seller Protection?"* or *"What's my dispute fee?"*. Answers use only this case's live PayPal data and 20 verbatim PayPal policy excerpts (`data/policy_corpus.json`); each claim has a citation chip.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `401` / `invalid_client` from PayPal | Use the **Sandbox** (not Live) Client ID/Secret; check `PAYPAL_ENVIRONMENT=SANDBOX`. |
+| Buyer can't pay ("your account doesn't support this") | Use a sandbox Personal account with country **United States**. |
+| Qwen errors (`401`, `model not found`) | Check `DASHSCOPE_API_KEY`; international accounts need `DASHSCOPE_BASE_URL` (see step 1); try `QWEN_MODEL=qwen-plus`. |
+| Port 3000 in use | `PORT=3100 npm run create-order` and `PORT=3100 npm start` (the PayPal return URL follows `PORT`). |
+| `bad host` | Open `http://localhost:<port>` or `http://127.0.0.1:<port>`. |
+| Dispute doesn't appear | Wait a few minutes and reload; it must be opened on the same order created by `npm run create-order`. |
+| Start over with a new order | Delete `out/state.json` and run `npm run create-order` again. |
+
+Verified end-to-end in sandbox on 2026-11-12: order captured → tracking `YUNEXPRESS` added (visible on the buyer's case page) → buyer opened an Item-not-received claim → evidence PDF submitted and on file while PayPal reviews. Re-verified from a fresh clone on 2026-11-13.
 
 ## Project layout
 
