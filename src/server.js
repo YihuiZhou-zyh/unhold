@@ -13,7 +13,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
 const HOSTED = Boolean(PUBLIC_URL);
 const ACCESS_CODE = process.env.DEMO_ACCESS_CODE || '';
-if (HOSTED && ACCESS_CODE.length < 6) { console.error('Hosted mode requires DEMO_ACCESS_CODE (at least 6 characters).'); process.exit(1); }
+if (HOSTED && ACCESS_CODE.length < 12) { console.error('Hosted mode requires DEMO_ACCESS_CODE (at least 12 characters).'); process.exit(1); }
 const BASE_URL = PUBLIC_URL || `http://localhost:${PORT}`;
 const HOSTS = [`localhost:${PORT}`, `127.0.0.1:${PORT}`, ...(HOSTED ? [new URL(PUBLIC_URL).host] : [])];
 const ORIGINS = [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, ...(HOSTED ? [new URL(PUBLIC_URL).origin] : [])];
@@ -282,7 +282,8 @@ async function readBody(req, max = 20_000) {
   for await (const c of req) { body += c; if (body.length > max) throw new Error('request body too large'); }
   return body;
 }
-const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+// The leftmost X-Forwarded-For entry is client-controlled; use the one appended by the hosting proxy (rightmost).
+const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop() || req.socket.remoteAddress;
 
 function loginPage(error) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -312,6 +313,7 @@ http.createServer(async (req, res) => {
       if (req.method === 'GET') return send(res, 200, 'text/html; charset=utf-8', loginPage(url.searchParams.has('e') ? 'Wrong access code.' : ''));
       if (req.method !== 'POST' || (req.headers.origin && !ORIGINS.includes(req.headers.origin))) return send(res, 403, 'text/plain', 'forbidden');
       limit(`login:${clientIp(req)}`, 10, 15 * 60e3);
+      limit('login:all', 100, 15 * 60e3); // global cap that does not depend on any client-supplied header
       const code = new URLSearchParams(await readBody(req, 2000)).get('code') || '';
       if (!codeMatches(code)) return redirect(res, '/login?e=1');
       const sid = sessionOf(req)?.sid || newSession();
