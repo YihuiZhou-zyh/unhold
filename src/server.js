@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { isIP } from 'node:net';
 import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, readdirSync, statSync, rmSync, utimesSync } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import * as pp from './paypal.js';
@@ -316,9 +317,31 @@ async function readBody(req, max = 20_000) {
 // Trust X-Forwarded-For only behind a known proxy (Render sets RENDER=true), and then only the entry the proxy
 // appended (rightmost); the leftmost entries are client-controlled.
 const TRUST_PROXY = Boolean(process.env.RENDER || process.env.TRUST_PROXY);
-const rawIp = (req) => (TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop()) || req.socket.remoteAddress || '';
-// Group IPv6 clients by /64 (one subscriber usually owns a whole /64), so rotating addresses doesn't evade limits.
-const clientIp = (req) => { const ip = rawIp(req).replace(/^::ffff:/, ''); return ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip; };
+// Fully expand an IPv6 address to 8 zero-padded lowercase groups (handles '::', embedded IPv4, zone IDs).
+function expandIPv6(ip) {
+  let a = ip.split('%')[0].toLowerCase();
+  const v4 = a.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) { const o = v4[1].split('.').map(Number); a = a.slice(0, -v4[1].length) + ((o[0] << 8) | o[1]).toString(16) + ':' + ((o[2] << 8) | o[3]).toString(16); }
+  const [head, tail] = a.includes('::') ? a.split('::') : [a, null];
+  const h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
+  const groups = tail === null ? h : [...h, ...Array(8 - h.length - t.length).fill('0'), ...t];
+  return groups.map((g) => g.padStart(4, '0'));
+}
+// Normalised source key: IPv4 as-is, IPv4-mapped IPv6 as IPv4, other IPv6 grouped by /64 (one subscriber usually
+// owns a whole /64, so rotating addresses doesn't evade limits). Unparseable proxy values fall back to the socket.
+function sourceKey(ip) {
+  const bare = String(ip || '').trim().split('%')[0];
+  const kind = isIP(bare);
+  if (kind === 4) return bare;
+  if (kind !== 6) return null;
+  const g = expandIPv6(bare);
+  if (g.slice(0, 5).every((x) => x === '0000') && g[5] === 'ffff') return [g[6], g[7]].map((x) => [parseInt(x.slice(0, 2), 16), parseInt(x.slice(2), 16)].join('.')).join('.');
+  return g.slice(0, 4).join(':') + '::/64';
+}
+const clientIp = (req) => {
+  const fwd = TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop();
+  return (fwd && sourceKey(fwd)) || sourceKey(req.socket.remoteAddress) || 'unknown';
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const LOGIN_WINDOW = 15 * 60e3;
 const recentHits = (key, windowMs) => { const now = Date.now(); const arr = (hits.get(key) || []).filter((t) => now - t < windowMs); hits.set(key, arr); return arr; };
