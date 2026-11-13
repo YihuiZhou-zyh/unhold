@@ -125,6 +125,17 @@ Click the **Ask Unhold** button (bottom right) and try *"Why is my money held?"*
 
 Verified end-to-end in sandbox on 2026-11-12: order captured → tracking `YUNEXPRESS` added (visible on the buyer's case page) → buyer opened an Item-not-received claim → evidence PDF submitted and on file while PayPal reviews. Re-verified from a fresh clone on 2026-11-13.
 
+## Hosted demo mode (Render)
+
+The same server runs as a shared, judge-friendly demo when `PUBLIC_URL` (or Render's `RENDER_EXTERNAL_URL`) and `DEMO_ACCESS_CODE` are set:
+
+- **Access code** page in front of everything; the API keys stay on the server.
+- **Private workspace per visitor** (cookie session): own order, analysis, tracking, evidence PDF and audit log. Dispute lists are filtered to the visitor's own payment (`disputed_transaction_id`), and dispute actions are refused for any other case.
+- **Create test order** button in the UI (no CLI), with the sandbox buyer login shown to logged-in visitors (`SANDBOX_BUYER_EMAIL` / `SANDBOX_BUYER_PASSWORD`, sandbox-only test credentials).
+- **Rate limits** per visitor and per day on order creation, Qwen analysis and Q&A.
+
+Deploy: Render Dashboard → **New → Blueprint** → this repo (uses `render.yaml`) → fill `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `DASHSCOPE_API_KEY`, `DEMO_ACCESS_CODE`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`. The free plan sleeps when idle, so the first request can take ~30–50 s.
+
 ## Project layout
 
 ```
