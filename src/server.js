@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import * as pp from './paypal.js';
 import { runChecks, loadDoc } from './verify.js';
@@ -38,7 +38,13 @@ function sessionOf(req) {
   return sid && SID_RE.test(sid) && existsSync(root(`out/sessions/${sid}`)) ? workspace(sid) : null;
 }
 function newSession() {
-  if (readdirSync(root('out/sessions')).length >= MAX_SESSIONS) throw new Error('The demo is at capacity, please try again later');
+  // At capacity, evict the least recently used workspace instead of refusing new visitors.
+  const dirs = readdirSync(root('out/sessions')).filter((d) => SID_RE.test(d));
+  if (dirs.length >= MAX_SESSIONS) {
+    const used = (d) => { const f = root(`out/sessions/${d}/state.json`); return statSync(existsSync(f) ? f : root(`out/sessions/${d}`)).mtimeMs; };
+    const oldest = dirs.sort((a, b) => used(a) - used(b))[0];
+    rmSync(root(`out/sessions/${oldest}`), { recursive: true, force: true });
+  }
   const sid = randomBytes(16).toString('hex');
   mkdirSync(root(`out/sessions/${sid}`));
   return sid;
@@ -282,8 +288,13 @@ async function readBody(req, max = 20_000) {
   for await (const c of req) { body += c; if (body.length > max) throw new Error('request body too large'); }
   return body;
 }
-// The leftmost X-Forwarded-For entry is client-controlled; use the one appended by the hosting proxy (rightmost).
-const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop() || req.socket.remoteAddress;
+// Trust X-Forwarded-For only behind a known proxy (Render sets RENDER=true), and then only the entry the proxy
+// appended (rightmost); the leftmost entries are client-controlled.
+const TRUST_PROXY = Boolean(process.env.RENDER || process.env.TRUST_PROXY);
+const clientIp = (req) => (TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean).pop()) || req.socket.remoteAddress;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const LOGIN_WINDOW = 15 * 60e3;
+const recentHits = (key, windowMs) => { const now = Date.now(); const arr = (hits.get(key) || []).filter((t) => now - t < windowMs); hits.set(key, arr); return arr; };
 
 function loginPage(error) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -312,14 +323,21 @@ http.createServer(async (req, res) => {
       if (!HOSTED) return redirect(res, '/');
       if (req.method === 'GET') return send(res, 200, 'text/html; charset=utf-8', loginPage(url.searchParams.has('e') ? 'Wrong access code.' : ''));
       if (req.method !== 'POST' || (req.headers.origin && !ORIGINS.includes(req.headers.origin))) return send(res, 403, 'text/plain', 'forbidden');
-      // Brute force is bounded by the per-IP failure limit plus the 12+ character code. Only failures count,
-      // and there is deliberately no global bucket, so nobody can lock judges out by spamming wrong codes.
-      const failKey = `login-fail:${clientIp(req)}`;
-      const fails = (hits.get(failKey) || []).filter((t) => Date.now() - t < 15 * 60e3);
+      // Brute force is bounded by a per-IP limit plus the 12+ character code. The attempt is recorded synchronously
+      // (before any await) so parallel requests cannot race past the limit; it is withdrawn if the code is right.
+      // Globally, many failures only slow logins down — no global lockout that could shut judges out.
+      const ip = clientIp(req), failKey = `login-fail:${ip}`;
+      const fails = recentHits(failKey, LOGIN_WINDOW);
       if (fails.length >= 10) return send(res, 429, 'text/plain', 'Too many wrong codes, try again in 15 minutes');
+      const stamp = Date.now();
+      fails.push(stamp);
+      const globalFails = recentHits('login-fail:all', LOGIN_WINDOW).length;
+      if (globalFails > 200) await sleep(Math.min(5000, globalFails * 10));
       const code = new URLSearchParams(await readBody(req, 2000)).get('code') || '';
-      if (!codeMatches(code)) { hits.set(failKey, [...fails, Date.now()]); return redirect(res, '/login?e=1'); }
-      const sid = sessionOf(req)?.sid || newSession();
+      if (!codeMatches(code)) { recentHits('login-fail:all', LOGIN_WINDOW).push(stamp); return redirect(res, '/login?e=1'); }
+      const mine = hits.get(failKey) || []; const k = mine.indexOf(stamp); if (k >= 0) mine.splice(k, 1);
+      let sid = sessionOf(req)?.sid;
+      if (!sid) { limit(`session-new:${ip}`, 10, HOUR); sid = newSession(); }
       const secure = PUBLIC_URL.startsWith('https://') ? '; Secure' : '';
       return redirect(res, '/', { 'Set-Cookie': `uh_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${secure}` });
     }
