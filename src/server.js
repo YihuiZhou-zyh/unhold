@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync } from 'node:fs';
 import * as pp from './paypal.js';
 import { runChecks, loadDoc } from './verify.js';
 import { extractPurchase, explain, groundingGuard } from './ai.js';
@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 3000);
 const root = (p) => new URL(`../${p}`, import.meta.url);
 const STATE = root('out/state.json');
 const AUDIT = root('out/audit.log.jsonl');
+mkdirSync(root('out'), { recursive: true }); // out/ is gitignored; create it on a fresh clone
 const state = () => (existsSync(STATE) ? JSON.parse(readFileSync(STATE)) : {});
 const save = (s) => writeFileSync(STATE, JSON.stringify(s, null, 2));
 const audit = (action, detail) => appendFileSync(AUDIT, JSON.stringify({ at: new Date().toISOString(), approved_by: 'seller (UI click)', action, detail }) + '\n');
