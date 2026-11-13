@@ -2,7 +2,7 @@
 
 ![Unhold dashboard](docs/screenshot.png)
 
-> **Live demo:** https://unhold-do43.onrender.com — runs on the PayPal sandbox with real API calls; each visitor gets a private workspace. Enter the access code from the Devpost testing instructions, then follow the 6-step guide on the page (create a test order → pay as the sandbox buyer → verify → push tracking → open a dispute as the buyer → submit evidence). The free instance sleeps when idle, so the first load can take ~30–50 s. To run it yourself instead, see [Run it](#run-it-judges-10-minutes).
+> **Live demo:** https://unhold-do43.onrender.com — runs on the PayPal sandbox with real API calls; each visitor gets a private workspace. Access code: `08d3b38432cc9185f9f2f5674b24fb5a`. Then follow the 6-step guide on the page (create a test order → pay as the sandbox buyer → verify → push tracking → open a dispute as the buyer → submit evidence). The free instance sleeps when idle, so the first load can take ~30–50 s. To run it yourself instead, see [Run it](#run-it-judges-10-minutes).
 
 **Unhold** is a get-paid copilot for small cross-border sellers (e.g. a two-person Shopify shop shipping to US buyers) who take payments with PayPal.
 
