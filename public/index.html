@@ -135,6 +135,11 @@
   .anim .pill { animation:pillpop .4s cubic-bezier(.3,1.7,.5,1) both; animation-delay:calc(var(--n, 0) * 55ms + 200ms); }
   @keyframes rise { from { opacity:0; transform:translateY(8px); } }
   @keyframes pillpop { from { transform:scale(.4); opacity:0; } }
+  .guide { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--mint); border-radius:var(--r-lg); padding:16px 20px; margin-bottom:16px; }
+  .guide b.t { display:block; margin-bottom:6px; color:var(--navy); }
+  .guide ol { margin:0; padding-left:20px; color:var(--mute); font-size:14px; line-height:1.7; }
+  .guide ol b { color:var(--ink); }
+  .paynow { display:flex; flex-direction:column; gap:6px; margin-top:auto; }
   .empty { border:1.5px dashed var(--line); border-radius:var(--r-md); padding:22px; text-align:center; color:var(--mute); }
 
   /* progress */
@@ -276,6 +281,7 @@
 </div>
 
 <main class="wrap">
+  <div id="guide"></div>
   <section class="step" id="step1">
     <div class="sh"><span class="num">1</span><div><h2>Payment &amp; hold status</h2><div class="api">PayPal Orders v2 · Payments · Balances</div></div></div>
     <div id="pay" class="mute">Loading…</div>
@@ -325,6 +331,7 @@ const STATUS_ICON = { pass: 'check', fail: 'x', warn: 'alert', explained: 'info'
 const chips = (arr) => `<div class="chips">${(arr || []).map((s) => `<span class="chip">${ic('doc')}${h(s)}</span>`).join('')}</div>`;
 async function call(path, body) {
   const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { location.href = '/login'; throw new Error('Session expired'); }
   const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j;
 }
 let S = {}, DETAIL = null, autoOpened = false, journeyDrawn = false;
@@ -336,7 +343,7 @@ function renderJourney() {
   const failed = a ? a.checks.filter((c) => c.status === 'fail').length : 0;
   const trackers = o?.purchase_units?.[0]?.shipping?.trackers || [];
   const tn = S.tracked?.tracking || (trackers[0]?.id || '').split('-').pop();
-  const sellerInfo = DETAIL?.dispute_id === d?.dispute_id && (DETAIL.supporting_info || []).some((s) => s.source === 'SUBMITTED_BY_SELLER');
+  const sellerInfo = !!d && DETAIL?.dispute_id === d.dispute_id && (DETAIL.supporting_info || []).some((s) => s.source === 'SUBMITTED_BY_SELLER');
   const evOnFile = !!d && (sellerInfo || ['UNDER_REVIEW', 'RESOLVED'].includes(d.status));
   const amt = o?.purchase_units?.[0]?.amount;
   const nodes = [
@@ -378,7 +385,7 @@ async function refresh() {
   const o = S.paypalOrder, cap = o?.purchase_units?.[0]?.payments?.captures?.[0];
   const held = cap && cap.status !== 'COMPLETED';
   $('pay').className = '';
-  $('pay').innerHTML = !o ? '<div class="empty">No order yet — run <code>npm run create-order</code>.</div>' : `
+  $('pay').innerHTML = !o ? `<div class="empty">No order yet.<div class="row" style="justify-content:center;margin-top:12px"><button id="btnNewOrder">${ic('card')}Create test order</button></div>${S.demo?.hosted ? '' : '<div class="mute" style="margin-top:8px">(or run <code>npm run create-order</code>)</div>'}</div>` : `
     <div class="pay">
       <div class="facts">
         <div class="fact"><div class="k">PayPal order</div><div class="v"><span class="id">${h(o.id)}</span> <span class="pill ${o.status === 'COMPLETED' ? 'pass' : 'neutral'}">${h(o.status)}</span></div></div>
@@ -394,9 +401,13 @@ async function refresh() {
         <div class="row">${cap ? `<span class="pill ${held ? 'warn' : 'pass'}">${ic(held ? 'lock' : 'check')}${h(cap.status)}</span>` : ''}${cap?.status_details ? `<span class="mute">reason <b class="id">${h(cap.status_details.reason)}</b></span>` : ''}</div>
         ${cap?.seller_protection?.dispute_categories?.length ? `<div class="mute" style="margin-top:auto">Seller Protection covers</div><div class="chips">${cap.seller_protection.dispute_categories.map((c) => `<span class="chip">${ic('shield')}${h(human(c))}</span>`).join('')}</div>` : ''}
         ${o.status === 'APPROVED' ? '<div><button id="btnCap">Capture payment</button></div>' : ''}
+        ${['CREATED', 'PAYER_ACTION_REQUIRED'].includes(o.status) && S.approveUrl ? `<div class="paynow"><a class="btn" href="${h(S.approveUrl)}">${ic('card')}Pay as the sandbox buyer</a>${buyerHint()}</div>` : ''}
+        <div><button class="ghost small" id="btnNewOrder">Start over with a new test order</button></div>
       </div>
     </div>`;
   if ($('btnCap')) $('btnCap').onclick = async () => { await call('/api/capture', {}); toast('Captured'); refresh(); };
+  if ($('btnNewOrder')) $('btnNewOrder').onclick = newOrder;
+  renderGuide();
   if (S.lastAnalysis) renderAnalysis(S.lastAnalysis);
   if (S.tracked) $('trackOut').innerHTML = `<span class="ok">${ic('check')}Tracking ${h(S.tracked.tracking)} added to PayPal · ${h(fmt(S.tracked.at))}</span>`;
   const ds = (S.disputes || []).filter((d) => !d.error);
@@ -409,7 +420,7 @@ async function refresh() {
       <div><div class="k">Amount</div><div class="v">$${h(d.dispute_amount?.value)}</div></div>
       <div><button class="ghost small" data-open="${h(d.dispute_id)}">Open case</button></div>
     </div>`).join('')
-    : `<div class="empty">${S.disputes?.[0]?.error ? 'Disputes API: ' + h(S.disputes[0].error) : 'No disputes yet. (Buyer opens one in the sandbox Resolution Center.)'}</div>`;
+    : `<div class="empty">${S.disputes?.[0]?.error ? 'Disputes API: ' + h(S.disputes[0].error) : (S.demo?.hosted ? 'No dispute on this order yet. As the sandbox buyer: sandbox.paypal.com → Activity → this $68 payment → Report a problem → “I didn’t receive it”. It appears here within 1–5 minutes (reload).' : 'No disputes yet. (Buyer opens one in the sandbox Resolution Center.)')}</div>`;
   renderJourney(); renderKpis();
   if (!autoOpened && ds.length) { autoOpened = true; openDispute(ds[0].dispute_id).catch((e) => toast(e.message, 8000)); }
 }
@@ -505,6 +516,27 @@ $('btnTrack').onclick = async () => {
   if (!confirmInline('btnTrack')) return;
   try { await call('/api/track', {}); toast('Tracking added to PayPal'); refresh(); } catch (e) { toast(e.message, 8000); }
 };
+function buyerHint() {
+  const b = S.demo?.buyer;
+  return b ? `<div class="mute">Sandbox buyer login: <b class="id">${h(b.email)}</b>${b.password ? ` · password <b class="id">${h(b.password)}</b>` : ''}</div>`
+    : '<div class="mute">Log in with a sandbox Personal (buyer) account.</div>';
+}
+async function newOrder() {
+  if (S.paypalOrder && !confirmInline('btnNewOrder')) return;
+  $('btnNewOrder').disabled = true;
+  try { await call('/api/order/create', {}); location.reload(); }
+  catch (e) { toast(e.message, 8000); $('btnNewOrder').disabled = false; }
+}
+function renderGuide() {
+  if (!S.demo?.hosted) return;
+  $('guide').innerHTML = `<div class="guide"><b class="t">Try it in 6 steps (live PayPal sandbox, your own private workspace)</b><ol>
+    <li><b>Create test order</b> in step 1, then <b>Pay as the sandbox buyer</b> (login shown there) — PayPal sends you back here and the payment is captured.</li>
+    <li><b>Run verification</b> in step 2 (~20 s). Optional: tick “untracked economy parcel” to see a blocked case, then run again without it.</li>
+    <li><b>Approve &amp; add tracking</b> in step 3 (click twice) — pushes real tracking to PayPal.</li>
+    <li>As the buyer, open <a href="https://www.sandbox.paypal.com/myaccount/activities/" target="_blank" rel="noopener">sandbox.paypal.com</a> → Activity → this $68 payment → <b>Report a problem</b> → item not received.</li>
+    <li>Reload after 1–5 minutes: the case appears in step 4 → <b>Approve &amp; submit evidence</b> (click twice).</li>
+    <li>Click <b>Ask Unhold</b> (bottom right) — e.g. “Why is my money held?”</li></ol></div>`;
+}
 function confirmInline(id) {
   const b = $(id);
   if (b.dataset.armed) { delete b.dataset.armed; clearTimeout(b._t); b.innerHTML = b.dataset.label; return true; }

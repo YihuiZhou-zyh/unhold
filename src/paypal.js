@@ -114,7 +114,9 @@ export function searchTransactions(days = 30) {
 
 // ---------- Disputes v1 ----------
 const did = (id) => { if (!/^PP-[A-Z0-9-]{3,64}$/.test(String(id))) throw new Error('invalid dispute id'); return encodeURIComponent(id); };
-export const listDisputes = () => api('GET', '/v1/customer/disputes?page_size=20');
+// Optionally filter by the seller's transaction (capture) ID.
+export const listDisputes = (transactionId) =>
+  api('GET', `/v1/customer/disputes?page_size=20${transactionId ? `&disputed_transaction_id=${encodeURIComponent(transactionId)}` : ''}`);
 export const getDispute = (id) => api('GET', `/v1/customer/disputes/${did(id)}`);
 
 export function provideEvidence(disputeId, { evidences, files }) {
